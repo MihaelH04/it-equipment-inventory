@@ -1,0 +1,50 @@
+# Build output
+bin/
+obj/
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+publish/
+publish-new/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.rsuser
+*.userosscache
+*.sln.docstates
+
+# Rider / JetBrains
+.idea/
+
+# VS Code local settings
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+
+# Backups
+backups/
+*.bak
+
+# Generated documents
+GeneratedDocuments/
+temp/
+profile-images/
+
+# App secrets / production config
+appsettings.Production.json
+appsettings.Development.local.json
+secrets.json
+
+# OS files
+.DS_Store
+Thumbs.db

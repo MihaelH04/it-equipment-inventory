@@ -1,0 +1,144 @@
+@model IEnumerable<ITEquipmentInventory.Models.EquipmentReturn>
+
+@{
+    ViewData["Title"] = "Razduženja";
+}
+
+<div class="container-fluid py-4 admin-shell">
+    <div class="admin-page-header">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Tablica razduženja</h1>
+            <div class="d-flex gap-2 flex-wrap">
+                <a asp-controller="EquipmentReturn" asp-action="ExportExcel"
+                   class="btn btn-outline-success rounded-4 fw-bold app-export-excel"
+                   data-export-form="equipmentReturnFilterForm"
+                   data-export-base-url="@Url.Action("ExportExcel", "EquipmentReturn")">
+                    Izvoz Excel
+                </a>
+                <a asp-controller="Equipment" asp-action="Index" class="btn btn-secondary rounded-4 fw-bold">
+                    Natrag na tablicu opreme
+                </a>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success border-0 shadow-sm rounded-4 mb-4">@TempData["Success"]</div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-4">@TempData["Error"]</div>
+    }
+
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card"><div class="card-body"><div class="stat-label">Ukupno razduženja</div><div class="stat-number">@ViewBag.TotalCount</div></div></div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card"><div class="card-body"><div class="stat-label">Danas</div><div class="stat-number text-primary">@ViewBag.TodayCount</div></div></div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card"><div class="card-body"><div class="stat-label">Sa zaposlenikom</div><div class="stat-number text-warning">@ViewBag.WithEmployeeCount</div></div></div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card"><div class="card-body"><div class="stat-label">Sa radnim nalogom</div><div class="stat-number text-success">@ViewBag.WithSiteCount</div></div></div>
+        </div>
+    </div>
+
+    <div class="card soft-card mb-4">
+        <div class="card-body">
+            <div class="filter-title">Pretraga razduženja</div>
+
+            <form id="equipmentReturnFilterForm" class="row g-3">
+                <div class="col-lg-9 autocomplete-search-wrap">
+                    <input type="text"
+                           id="equipmentReturnMainSearch"
+                           name="searchString"
+                           value="@(ViewBag.SearchString ?? "")"
+                           class="form-control modern-input"
+                           placeholder="Pretraži po inventurnom broju, nazivu, zaposleniku, radnom nalogu ili datumu..."
+                           autocomplete="off"
+                           data-main-search="true" />
+                    <div id="equipmentReturnMainSearchSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+                </div>
+                <div class="col-lg-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-dark w-100 rounded-4 fw-bold">Primijeni</button>
+                    <button type="button" id="resetReturnFiltersBtn" class="btn btn-outline-secondary w-100 rounded-4 fw-bold">Reset</button>
+                </div>
+                <input type="hidden" name="sortOrder" id="returnSortOrderInput" value="@(ViewBag.CurrentSort ?? "")" />
+            </form>
+        </div>
+    </div>
+
+    <div id="equipmentReturnTableHost" class="table-host">
+        @await Html.PartialAsync("_EquipmentReturnTable", Model)
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    async function loadEquipmentReturnTable() {
+        const host = document.getElementById('equipmentReturnTableHost');
+        const form = document.getElementById('equipmentReturnFilterForm');
+        const params = new URLSearchParams(new FormData(form));
+
+        host.classList.add('loading');
+
+        try {
+            const response = await fetch('@Url.Action("IndexTable", "EquipmentReturn")?' + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            host.innerHTML = await response.text();
+            wireReturnSortLinks();
+            window.setupExportLinksFromForms();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            host.classList.remove('loading');
+        }
+    }
+
+    function wireReturnSortLinks() {
+        document.querySelectorAll('.ajax-return-sort-link').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const url = new URL(this.href);
+                document.getElementById('returnSortOrderInput').value = url.searchParams.get('sortOrder') ?? '';
+                loadEquipmentReturnTable();
+            });
+        });
+    }
+
+    document.getElementById('equipmentReturnFilterForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        loadEquipmentReturnTable();
+    });
+
+    document.getElementById('resetReturnFiltersBtn').addEventListener('click', function () {
+        const form = document.getElementById('equipmentReturnFilterForm');
+        form.reset();
+        document.getElementById('returnSortOrderInput').value = '';
+        loadEquipmentReturnTable();
+    });
+
+    setupRemoteEntityAutocomplete(
+        'equipmentReturnMainSearch',
+        null,
+        'equipmentReturnMainSearchSuggestions',
+        '@Url.Action("SearchReturnSuggestions", "EquipmentReturn")',
+        {
+            hideDelayMs: 1000,
+            onSelect: function () {
+                document.getElementById('returnSortOrderInput').value = '';
+                loadEquipmentReturnTable();
+            }
+        }
+    );
+
+    wireReturnSortLinks();
+    window.setupExportLinksFromForms();
+</script>
+}

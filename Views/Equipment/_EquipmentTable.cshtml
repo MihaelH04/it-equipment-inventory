@@ -1,0 +1,300 @@
+@model IEnumerable<ITEquipmentInventory.Models.Equipment>
+
+@{
+    string currentSort = ViewBag.CurrentSort as string ?? "";
+    string currentStatusFilter = ViewBag.CurrentStatusFilter as string ?? "";
+    string currentSearch = ViewBag.SearchString as string ?? "";
+
+    string SortIcon(string ascKey, string descKey)
+    {
+        if (currentSort == ascKey) return "▲";
+        if (currentSort == descKey) return "▼";
+        return "↕";
+    }
+}
+
+<form method="post" id="equipmentBulkForm" class="equipment-bulk-form">
+    @Html.AntiForgeryToken()
+
+    <div class="bulk-toolbar">
+        <div class="bulk-toolbar-left">
+            <button type="submit"
+                    formaction="@Url.Action("BulkEdit", "Equipment")"
+                    class="btn btn-primary"
+                    onclick="return validateEquipmentBulkEdit(this.form);">
+                Editiraj selektirano
+            </button>
+
+            <button type="submit"
+                    formaction="@Url.Action("BulkReturn", "Equipment")"
+                    class="btn btn-return-main"
+                    onclick="return validateEquipmentBulkReturn(this.form);">
+                Razduži
+            </button>
+
+            <button type="submit"
+                    formaction="@Url.Action("DeleteSelected", "Equipment")"
+                    class="btn btn-danger"
+                    onclick="return validateEquipmentBulkDelete(this.form);">
+                Obriši odabrano
+            </button>
+        </div>
+
+        <div class="selection-counter" id="selectionCounter">Selektirano: 0</div>
+    </div>
+
+    <div class="modern-table-wrap equipment-table-wrap">
+        <div class="table-responsive equipment-table-responsive">
+            <table class="table modern-table equipment-table-fit align-middle">
+                <colgroup>
+                    <col class="eq-col-check" />
+                    <col class="eq-col-inventory" />
+                    <col class="eq-col-serial" />
+                    <col class="eq-col-type" />
+                    <col class="eq-col-name" />
+                    <col class="eq-col-status" />
+                    <col class="eq-col-site" />
+                    <col class="eq-col-employee" />
+                    <col class="eq-col-date" />
+                    <col class="eq-col-handed" />
+                    <col class="eq-col-actions" />
+                </colgroup>
+
+                <thead>
+                    <tr>
+                        <th class="eq-check" aria-label="Odaberi sve">
+                            <input type="checkbox" id="selectAllEquipment" aria-label="Odaberi svu opremu" />
+                        </th>
+
+                        <th class="eq-inventory">
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.InventorySort })"
+                               class="ajax-sort-link">
+                                Inv. br.
+                                <span>@SortIcon("inventory_asc", "inventory_desc")</span>
+                            </a>
+                        </th>
+
+                        <th class="eq-serial">
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.SerialSort })"
+                               class="ajax-sort-link">
+                                Serijski
+                                <span>@SortIcon("serial_asc", "serial_desc")</span>
+                            </a>
+                        </th>
+
+                        <th class="eq-type">
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.TypeSort })"
+                               class="ajax-sort-link">
+                                Vrsta
+                                <span>@SortIcon("type_asc", "type_desc")</span>
+                            </a>
+                        </th>
+
+                        <th class="eq-name">
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.NameSort })"
+                               class="ajax-sort-link">
+                                Naziv
+                                <span>@SortIcon("name_asc", "name_desc")</span>
+                            </a>
+                        </th>
+
+                        <th class="eq-status">
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.StatusSort })"
+                               class="ajax-sort-link">
+                                Status
+                                <span>@SortIcon("status_asc", "status_desc")</span>
+                            </a>
+                        </th>
+
+                        <th class="eq-site">
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.SiteSort })"
+                               class="ajax-sort-link">
+                                RN
+                                <span>@SortIcon("site_asc", "site_desc")</span>
+                            </a>
+                        </th>
+
+                        <th class="eq-employee">
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.EmployeeSort })"
+                               class="ajax-sort-link">
+                                Osoba
+                                <span>@SortIcon("employee_asc", "employee_desc")</span>
+                            </a>
+                        </th>
+
+                        <th class="eq-date">
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.AssignedAtSort })"
+                               class="ajax-sort-link">
+                                Datum
+                                <span>@SortIcon("assignedat_asc", "assignedat_desc")</span>
+                            </a>
+                        </th>
+
+                        <th class="eq-handed">Zadužio</th>
+                        <th class="eq-actions">Akcije</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @if (Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr class="row-selector">
+                                <td class="eq-check" data-label="Odabir">
+                                    <input type="checkbox"
+                                           name="selectedIds"
+                                           value="@item.Id"
+                                           class="row-checkbox hidden-row-checkbox" />
+                                </td>
+
+                                <td class="inventory-text eq-inventory" data-label="Inv. br." title="@item.InventoryNumber">
+                                    @item.InventoryNumber
+                                </td>
+
+                                <td class="eq-serial" data-label="Serijski broj" title="@item.SerialNumber">
+                                    @(string.IsNullOrWhiteSpace(item.SerialNumber) ? "-" : item.SerialNumber)
+                                </td>
+
+                                <td class="eq-type" data-label="Vrsta" title="@item.EquipmentType.ToString()">
+                                    @item.EquipmentType
+                                </td>
+
+                                <td class="equipment-name-cell eq-name" data-label="Naziv" title="@item.Name">
+                                    <span class="equipment-name-main">@item.Name</span>
+                                    <span class="equipment-compact-meta">
+                                        <span class="meta-type">@item.EquipmentType</span>
+                                        <span class="meta-serial">S/N: @(string.IsNullOrWhiteSpace(item.SerialNumber) ? "-" : item.SerialNumber)</span>
+                                        <span class="meta-date">Datum: @(item.AssignedAt.HasValue ? item.AssignedAt.Value.ToString("dd.MM.yyyy") : "-")</span>
+                                        <span class="meta-handed">Zadužio: @(string.IsNullOrWhiteSpace(item.HandedOverBy) ? "-" : item.HandedOverBy)</span>
+                                        <span class="meta-site">RN: @(item.CurrentSite == null ? "-" : (string.IsNullOrWhiteSpace(item.CurrentSite.Code) ? item.CurrentSite.Name : item.CurrentSite.Code + " - " + item.CurrentSite.Name))</span>
+                                    </span>
+                                </td>
+
+                                <td class="eq-status" data-label="Status">
+                                    @if (item.Status == ITEquipmentInventory.Models.EquipmentStatus.Dostupno)
+                                    {
+                                        <span class="status-badge status-success">Dostupno</span>
+                                    }
+                                    else if (item.Status == ITEquipmentInventory.Models.EquipmentStatus.Zaduzeno)
+                                    {
+                                        <span class="status-badge status-warning">Zaduženo</span>
+                                    }
+                                    else if (item.Status == ITEquipmentInventory.Models.EquipmentStatus.Servis)
+                                    {
+                                        <span class="status-badge status-info">Servis</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="status-badge status-danger">Otpisano</span>
+                                    }
+                                </td>
+
+                                <td class="eq-site" data-label="Radni nalog" title="@(item.CurrentSite == null ? "-" : (string.IsNullOrWhiteSpace(item.CurrentSite.Code) ? item.CurrentSite.Name : item.CurrentSite.Code + " - " + item.CurrentSite.Name))">
+                                    @if (item.CurrentSite != null)
+                                    {
+                                        @(string.IsNullOrWhiteSpace(item.CurrentSite.Code)
+                                            ? item.CurrentSite.Name
+                                            : item.CurrentSite.Code + " - " + item.CurrentSite.Name)
+                                    }
+                                    else
+                                    {
+                                        @:-
+                                    }
+                                </td>
+                                <td class="equipment-employee-cell eq-employee"
+                                    data-label="Osoba"
+                                    title="@(item.CurrentEmployee == null ? "-" : item.CurrentEmployee.FullName)">
+    @if (item.CurrentEmployee != null)
+    {
+        @item.CurrentEmployee.FullName
+    }
+    else
+    {
+        @:-
+    }
+                                </td>
+
+                                <td class="eq-date" data-label="Datum">
+                                    @(item.AssignedAt.HasValue ? item.AssignedAt.Value.ToString("dd.MM.yyyy") : "-")
+                                </td>
+
+                                <td class="equipment-handed-cell eq-handed" data-label="Zadužio" title="@item.HandedOverBy">
+                                    @(string.IsNullOrWhiteSpace(item.HandedOverBy) ? "-" : item.HandedOverBy)
+                                </td>
+
+                                <td class="eq-actions" data-label="Akcije">
+                                    <div class="equipment-actions">
+                                        <a asp-controller="Document"
+                                           asp-action="Generate"
+                                           asp-route-id="@item.Id"
+                                           class="btn btn-info text-white btn-soft action-link"
+                                           title="Generiraj zaduženje">
+                                            <span class="equipment-action-icon" aria-hidden="true">📄</span>
+                                            <span class="equipment-action-text">Zaduži</span>
+                                        </a>
+
+                                        <a asp-action="Edit"
+                                           asp-route-id="@item.Id"
+                                           class="btn btn-warning btn-soft action-link"
+                                           title="Uredi">
+                                            <span class="equipment-action-icon" aria-hidden="true">✏️</span>
+                                            <span class="equipment-action-text">Edit</span>
+                                        </a>
+
+                                        <a asp-action="Delete"
+                                           asp-route-id="@item.Id"
+                                           class="btn btn-danger btn-soft action-link"
+                                           title="Obriši">
+                                            <span class="equipment-action-icon" aria-hidden="true">🗑️</span>
+                                            <span class="equipment-action-text">Obriši</span>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr class="equipment-empty-row">
+                            <td colspan="11" class="equipment-empty-cell">
+                                <div class="empty-state-modern">
+                                    Nema pronađene opreme za odabrane filtere.
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+
+<script>
+    function validateEquipmentBulkEdit(form) {
+        const checked = form.querySelectorAll('input[name="selectedIds"]:checked');
+        if (checked.length === 0) {
+            alert('Odaberi barem jednu stavku za grupno uređivanje.');
+            return false;
+        }
+        return true;
+    }
+
+    function validateEquipmentBulkReturn(form) {
+        const checked = form.querySelectorAll('input[name="selectedIds"]:checked');
+        if (checked.length === 0) {
+            alert('Odaberi barem jednu stavku za razduživanje.');
+            return false;
+        }
+        return true;
+    }
+
+    function validateEquipmentBulkDelete(form) {
+        const checked = form.querySelectorAll('input[name="selectedIds"]:checked');
+        if (checked.length === 0) {
+            alert('Odaberi barem jednu stavku za brisanje.');
+            return false;
+        }
+        return true;
+    }
+</script>

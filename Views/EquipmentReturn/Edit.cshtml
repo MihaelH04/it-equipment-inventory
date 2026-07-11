@@ -1,0 +1,70 @@
+@model ITEquipmentInventory.Models.EquipmentReturn
+
+@{
+    ViewData["Title"] = "Uredi razduženje";
+}
+
+<div class="container mt-4">
+    <h1>Uredi razduženje</h1>
+
+    <form asp-action="Edit" method="post" autocomplete="off">
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="InventoryNumber" class="form-label"></label>
+                <input asp-for="InventoryNumber" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="SerialNumber" class="form-label"></label>
+                <input asp-for="SerialNumber" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="EquipmentType" class="form-label"></label>
+                <select asp-for="EquipmentType" class="form-select" asp-items="Html.GetEnumSelectList<ITEquipmentInventory.Models.EquipmentType>()"></select>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Radni nalog - šifra</label>
+                <input asp-for="PreviousSiteCode" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Radni nalog - naziv</label>
+                <input asp-for="PreviousSiteName" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Zaposlenik - šifra</label>
+                <input asp-for="PreviousEmployeeCode" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Zaposlenik - ime i prezime</label>
+                <input asp-for="PreviousEmployeeName" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="AssignedAt" class="form-label"></label>
+                <input asp-for="AssignedAt" type="date" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="ReturnedAt" class="form-label"></label>
+                <input asp-for="ReturnedAt" type="date" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="HandedOverBy" class="form-label"></label>
+                <input asp-for="HandedOverBy" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Note" class="form-label"></label>
+                <input asp-for="Note" class="form-control" />
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Spremi promjene</button>
+            <a asp-action="Index" class="btn btn-secondary">Natrag</a>
+        </div>
+    </form>
+</div>

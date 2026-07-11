@@ -1,0 +1,3089 @@
+/* ============================================================
+   IT Equipment Inventory - Premium UI v4
+   Stabilno, responzivno, bez internog vertikalnog scrolla tablica.
+   ============================================================ */
+
+:root,
+html[data-theme="light"] {
+    color-scheme: light;
+    --ui-bg: #eef4ff;
+    --ui-bg-2: #f8fbff;
+    --ui-surface: rgba(255,255,255,.86);
+    --ui-surface-solid: #ffffff;
+    --ui-surface-soft: #f8fafc;
+    --ui-text: #0f172a;
+    --ui-muted: #64748b;
+    --ui-border: rgba(148,163,184,.35);
+    --ui-primary: #2563eb;
+    --ui-primary-2: #7c3aed;
+    --ui-ring: rgba(37,99,235,.20);
+    --ui-shadow: 0 24px 70px rgba(15,23,42,.13);
+    --ui-shadow-soft: 0 14px 38px rgba(15,23,42,.09);
+    --ui-topbar: rgba(255,255,255,.82);
+    --ui-sidebar-a: #061224;
+    --ui-sidebar-b: #0f1f3f;
+    --ui-table-head-a: #182235;
+    --ui-table-head-b: #0b1220;
+}
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --ui-bg: #050914;
+    --ui-bg-2: #0b1220;
+    --ui-surface: rgba(15,23,42,.78);
+    --ui-surface-solid: #101827;
+    --ui-surface-soft: #0b1220;
+    --ui-text: #e5edf8;
+    --ui-muted: #9baac0;
+    --ui-border: rgba(148,163,184,.22);
+    --ui-primary: #60a5fa;
+    --ui-primary-2: #a78bfa;
+    --ui-ring: rgba(96,165,250,.22);
+    --ui-shadow: 0 34px 95px rgba(0,0,0,.42);
+    --ui-shadow-soft: 0 16px 45px rgba(0,0,0,.32);
+    --ui-topbar: rgba(6,10,18,.84);
+    --ui-sidebar-a: #020617;
+    --ui-sidebar-b: #0b1220;
+    --ui-table-head-a: #172033;
+    --ui-table-head-b: #0b1020;
+}
+
+* { box-sizing: border-box; scrollbar-width: thin; scrollbar-color: rgba(96,165,250,.55) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(96,165,250,.46); border-radius: 999px; }
+
+html {
+    min-height: 100%;
+    background:
+        radial-gradient(circle at 12% 0%, rgba(37,99,235,.22), transparent 32%),
+        radial-gradient(circle at 90% 4%, rgba(124,58,237,.18), transparent 28%),
+        linear-gradient(180deg, var(--ui-bg), var(--ui-bg-2)) !important;
+}
+
+body,
+body.app-body {
+    min-height: 100vh !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+    color: var(--ui-text) !important;
+    background: transparent !important;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,.95), transparent 78%);
+}
+
+h1,h2,h3,h4,h5 { color: var(--ui-text) !important; letter-spacing: -.035em; }
+.text-muted { color: var(--ui-muted) !important; }
+a { transition: color .18s ease, transform .18s ease; }
+
+/* TOPBAR */
+.app-topbar,
+.topbar {
+    min-height: 72px !important;
+    height: auto !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1040 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1rem !important;
+    padding: .72rem clamp(.85rem, 2vw, 1.45rem) !important;
+    background: var(--ui-topbar) !important;
+    border-bottom: 1px solid var(--ui-border) !important;
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    box-shadow: 0 12px 34px rgba(15,23,42,.09) !important;
+}
+
+.topbar-left,
+.topbar-right { display: flex !important; align-items: center !important; gap: .72rem !important; min-width: 0; }
+.topbar-right { justify-content: flex-end; flex-wrap: wrap; }
+.menu-toggle-btn {
+    width: 46px !important;
+    height: 46px !important;
+    border: 0 !important;
+    border-radius: 16px !important;
+    display: inline-grid !important;
+    place-items: center !important;
+    color: #fff !important;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    box-shadow: 0 16px 30px rgba(37,99,235,.30) !important;
+}
+.menu-toggle-btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
+.topbar-brand { display: inline-flex; align-items: center; gap: .72rem; color: var(--ui-text) !important; text-decoration: none !important; min-width: 0; }
+.brand-mark { width: 44px; height: 44px; border-radius: 16px; display: inline-grid; place-items: center; color: #fff; font-weight: 950; letter-spacing: -.05em; background: linear-gradient(135deg, #0f172a, #2563eb 58%, #7c3aed); box-shadow: 0 16px 34px rgba(15,23,42,.22); }
+.brand-text { display: flex; flex-direction: column; line-height: 1.04; }
+.brand-text strong { font-size: 1.02rem; letter-spacing: -.02em; }
+.brand-text small { color: var(--ui-muted); font-weight: 850; font-size: .76rem; }
+.theme-toggle-btn { width: 44px; height: 44px; display: inline-grid; place-items: center; border-radius: 16px; border: 1px solid var(--ui-border); color: var(--ui-text); background: var(--ui-surface-solid); box-shadow: var(--ui-shadow-soft); }
+.user-chip { display: inline-flex; align-items: center; gap: .58rem; padding: .34rem .78rem .34rem .34rem; border-radius: 999px; border: 1px solid var(--ui-border); background: var(--ui-surface-solid); box-shadow: var(--ui-shadow-soft); }
+.user-avatar { width: 34px; height: 34px; border-radius: 50%; display: inline-grid; place-items: center; background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; font-weight: 950; }
+.user-meta { display: flex; flex-direction: column; line-height: 1.04; }
+.user-meta strong { font-size: .84rem; color: var(--ui-text); }
+.user-meta small { font-size: .72rem; font-weight: 850; color: var(--ui-muted); }
+
+/* SIDEBAR */
+.custom-offcanvas,
+.app-sidebar { width: min(330px, 92vw) !important; color: #fff !important; background: radial-gradient(circle at 20% 0%, rgba(37,99,235,.34), transparent 34%), linear-gradient(180deg, var(--ui-sidebar-a), var(--ui-sidebar-b)) !important; border-right: 1px solid rgba(255,255,255,.08) !important; }
+.custom-offcanvas .offcanvas-body { padding: 1rem !important; }
+.sidebar-header,
+.custom-offcanvas .offcanvas-header { padding: 1rem !important; border-bottom: 1px solid rgba(255,255,255,.08) !important; }
+.custom-offcanvas .btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
+.sidebar-brand { min-height: 86px !important; border-radius: 22px !important; background: rgba(255,255,255,.96) !important; box-shadow: 0 22px 50px rgba(0,0,0,.26) !important; }
+.sidebar-brand img { max-height: 72px !important; max-width: 100% !important; object-fit: contain !important; }
+.sidebar-nav { display: flex !important; flex-direction: column !important; gap: .5rem !important; margin-top: .85rem !important; }
+.sidebar-link { position: relative; display: flex !important; align-items: center; gap: .72rem; min-height: 50px; padding: .86rem 1rem !important; border-radius: 17px !important; color: #dbeafe !important; text-decoration: none !important; background: rgba(255,255,255,.055) !important; border: 1px solid rgba(255,255,255,.065); overflow: hidden; }
+.sidebar-link::before { content: ""; position: absolute; inset: 0; opacity: 0; background: linear-gradient(135deg, rgba(96,165,250,.22), rgba(167,139,250,.18)); transition: opacity .18s ease; }
+.sidebar-link:hover::before,
+.sidebar-link.active::before { opacity: 1; }
+.sidebar-link:hover { transform: translateX(5px); color: #fff !important; }
+.sidebar-link.active { background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; color: #fff !important; box-shadow: 0 18px 40px rgba(37,99,235,.34) !important; }
+.nav-icon,.nav-text { position: relative; z-index: 1; }
+.nav-icon { width: 26px; text-align: center; }
+.nav-text { flex: 1; }
+.shortcut-hint { display: none !important; }
+.sidebar-section-title { color: #93a4bd !important; font-size: .75rem !important; letter-spacing: .1em !important; margin: 1.1rem 0 .45rem .35rem !important; }
+
+/* MAIN */
+.app-main-content,
+.main-content { width: 100% !important; min-height: calc(100vh - 72px) !important; padding: clamp(.85rem, 2vw, 1.45rem) !important; margin: 0 !important; background: transparent !important; }
+.app-content-shell,
+.content-shell { width: min(100%, 1700px) !important; margin-inline: auto !important; }
+.container,
+.container-fluid { max-width: 1700px !important; }
+.admin-shell { padding-left: 0 !important; padding-right: 0 !important; }
+
+/* DASHBOARD V4 */
+.dashboard-page-v4 { width: 100%; display: flex; flex-direction: column; gap: clamp(1rem, 2vw, 1.35rem); padding: clamp(.25rem, 1.2vw, 1rem) 0 clamp(1.5rem, 3vw, 2rem); }
+.hero-panel-v4 { width: min(100%, 1420px); margin-inline: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem; padding: clamp(1.25rem, 3vw, 2.3rem); border: 1px solid var(--ui-border); border-radius: clamp(24px, 3vw, 34px); background: linear-gradient(135deg, rgba(37,99,235,.16), rgba(124,58,237,.10)), var(--ui-surface); box-shadow: var(--ui-shadow); backdrop-filter: blur(18px) saturate(140%); }
+.hero-kicker-v4 { display: inline-flex; padding: .36rem .78rem; border-radius: 999px; background: rgba(37,99,235,.13); color: var(--ui-primary); font-weight: 950; font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; margin-bottom: .75rem; }
+.hero-panel-v4 h1 { margin: 0; font-size: clamp(2rem, 5vw, 4.3rem); font-weight: 950; line-height: .98; }
+.hero-panel-v4 p { max-width: 820px; margin: .9rem 0 0; color: var(--ui-muted); font-weight: 650; font-size: clamp(.98rem, 1.4vw, 1.12rem); }
+.hero-actions-v4 { display: flex; flex-direction: column; gap: .7rem; min-width: 220px; }
+.app-action-btn { padding: .85rem 1rem !important; border-radius: 17px !important; }
+.dashboard-grid-v4 { width: min(100%, 1420px); margin-inline: auto; display: grid; grid-template-columns: repeat(4, minmax(230px, 1fr)); gap: clamp(.85rem, 1.35vw, 1.1rem); }
+.dashboard-card-v4 { position: relative; min-height: clamp(220px, 22vw, 280px); display: flex; flex-direction: column; padding: clamp(1.1rem, 2vw, 1.55rem); border-radius: clamp(24px, 2.6vw, 32px); text-decoration: none !important; color: #fff !important; overflow: hidden; box-shadow: var(--ui-shadow); isolation: isolate; transition: transform .22s ease, box-shadow .22s ease, filter .22s ease; }
+.dashboard-card-v4:hover { transform: translateY(-7px); filter: saturate(1.05); box-shadow: 0 32px 86px rgba(15,23,42,.24); }
+.card-glow-v4 { position: absolute; width: clamp(150px, 14vw, 230px); height: clamp(150px, 14vw, 230px); right: -56px; top: -56px; border-radius: 50%; background: rgba(255,255,255,.17); z-index: -1; }
+.card-blue { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 56%, #153ea8 100%) !important; }
+.card-orange { background: linear-gradient(135deg, #f59e0b 0%, #e98a00 56%, #b96300 100%) !important; }
+.card-green { background: linear-gradient(135deg, #10b981 0%, #059669 56%, #047857 100%) !important; }
+.card-red { background: linear-gradient(135deg, #ef4444 0%, #dc2626 56%, #be123c 100%) !important; }
+.card-head-v4 { display: flex; align-items: center; justify-content: space-between; gap: .7rem; margin-bottom: auto; }
+.card-icon-v4 { width: 58px; height: 58px; border-radius: 20px; display: inline-grid; place-items: center; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28); font-size: 1.6rem; }
+.card-chip-v4 { padding: .34rem .7rem; border-radius: 999px; background: rgba(255,255,255,.16); color: rgba(255,255,255,.88); font-size: .78rem; font-weight: 950; }
+.dashboard-label-v4 { margin-top: 1.25rem; font-size: clamp(1.05rem, 1.4vw, 1.35rem); font-weight: 950; }
+.dashboard-value-v4 { margin-top: .42rem; font-size: clamp(3.55rem, 6vw, 5.45rem); font-weight: 950; line-height: .9; letter-spacing: -.08em; }
+.dashboard-footer-v4 { margin-top: auto; padding-top: 1.1rem; font-weight: 950; font-size: clamp(.95rem, 1.1vw, 1.05rem); }
+.dashboard-card-v4:hover .dashboard-footer-v4 span { transform: translateX(4px); }
+.dashboard-footer-v4 span { display: inline-block; transition: transform .18s ease; }
+.dashboard-mini-grid-v4 { width: min(100%, 1420px); margin-inline: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(.85rem, 1.35vw, 1.1rem); }
+.mini-stat-card-v4 { display: flex; align-items: center; gap: 1rem; min-height: 104px; padding: 1.15rem 1.25rem; border-radius: 26px; border: 1px solid var(--ui-border); background: var(--ui-surface); box-shadow: var(--ui-shadow-soft); color: var(--ui-text) !important; text-decoration: none !important; backdrop-filter: blur(18px); }
+.mini-stat-card-v4:hover { transform: translateY(-4px); box-shadow: var(--ui-shadow); }
+.mini-icon-v4 { width: 58px; height: 58px; display: inline-grid; place-items: center; border-radius: 20px; background: rgba(37,99,235,.12); font-size: 1.55rem; }
+.mini-copy-v4 { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+.mini-copy-v4 strong { font-size: clamp(1.35rem, 2.2vw, 1.75rem); font-weight: 950; color: var(--ui-text); }
+.mini-copy-v4 small { color: var(--ui-muted); font-weight: 850; margin-top: .35rem; }
+.mini-arrow-v4 { margin-left: auto; color: var(--ui-primary); font-weight: 950; font-size: 1.2rem; }
+.user-dashboard-card-v4 { width: min(100%, 980px); margin: auto; display: flex; align-items: center; gap: 1rem; padding: 1.5rem; border-radius: 28px; border: 1px solid var(--ui-border); background: var(--ui-surface); box-shadow: var(--ui-shadow); }
+.user-dashboard-icon-v4 { width: 64px; height: 64px; border-radius: 22px; display: inline-grid; place-items: center; background: rgba(37,99,235,.12); font-size: 1.8rem; }
+
+/* CARDS, FILTERI, FORME */
+.card,.soft-card,.content-card,.confirm-card,.filter-card,.stat-card { background: var(--ui-surface) !important; border: 1px solid var(--ui-border) !important; color: var(--ui-text) !important; border-radius: 24px !important; box-shadow: var(--ui-shadow-soft) !important; backdrop-filter: blur(18px); }
+.card-body { color: var(--ui-text) !important; }
+.stat-card .stat-number,.stat-number,.stat-broj { font-weight: 950 !important; color: var(--ui-text) !important; }
+.stat-label,.filter-title { color: var(--ui-muted) !important; font-weight: 900 !important; letter-spacing: .02em; }
+.admin-page-header .d-flex,.page-header .d-flex,.d-flex.justify-content-between.align-items-center.mb-4 { gap: 1rem; flex-wrap: wrap; }
+.admin-page-header h1 { font-weight: 950 !important; }
+.form-control,.form-select,.modern-input,.modern-select { min-height: 46px; border-radius: 16px !important; border: 1px solid var(--ui-border) !important; background: var(--ui-surface-solid) !important; color: var(--ui-text) !important; box-shadow: none !important; }
+.form-control:focus,.form-select:focus,.modern-input:focus,.modern-select:focus { border-color: var(--ui-primary) !important; box-shadow: 0 0 0 .22rem var(--ui-ring) !important; }
+.form-control::placeholder { color: var(--ui-muted) !important; }
+.autocomplete-search-wrap { position: relative !important; }
+.autocomplete-suggestions { border-radius: 18px !important; border: 1px solid var(--ui-border) !important; background: var(--ui-surface-solid) !important; box-shadow: 0 24px 70px rgba(15,23,42,.22) !important; overflow: hidden !important; z-index: 2080 !important; }
+.autocomplete-suggestions .list-group-item { background: var(--ui-surface-solid) !important; color: var(--ui-text) !important; border-color: var(--ui-border) !important; font-weight: 760; }
+.autocomplete-suggestion-item.active,.autocomplete-suggestion-item:focus,.autocomplete-suggestion-item:hover { background: var(--ui-primary) !important; color: #fff !important; }
+
+/* BUTTONS */
+.btn { border-radius: 15px !important; font-weight: 900 !important; border-width: 1px !important; transition: transform .16s ease, box-shadow .16s ease, filter .16s ease !important; }
+.btn:hover { transform: translateY(-1px); }
+.btn-primary,.btn-dark { color: #fff !important; background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; border-color: transparent !important; box-shadow: 0 14px 28px rgba(37,99,235,.24) !important; }
+.btn-success { color: #fff !important; background: linear-gradient(135deg, #10b981, #059669) !important; border-color: transparent !important; }
+.btn-danger { color: #fff !important; background: linear-gradient(135deg, #ef4444, #dc2626) !important; border-color: transparent !important; }
+.btn-warning { background: linear-gradient(135deg, #fbbf24, #f59e0b) !important; border-color: transparent !important; color: #111827 !important; }
+.btn-info { background: linear-gradient(135deg, #06b6d4, #0ea5e9) !important; border-color: transparent !important; color: #fff !important; }
+.btn-return-main { color: #fff !important; background: linear-gradient(135deg, #f97316, #ea580c) !important; border-color: transparent !important; }
+.btn-outline-primary,.btn-outline-secondary,.btn-outline-success { background: var(--ui-surface-solid) !important; color: var(--ui-text) !important; border-color: var(--ui-border) !important; }
+.btn-outline-primary:hover,.btn-outline-secondary:hover,.btn-outline-success:hover { background: rgba(37,99,235,.12) !important; color: var(--ui-text) !important; }
+.btn-soft { padding: .48rem .78rem !important; font-size: .82rem !important; }
+
+/* TABLICE - horizontalni scroll samo kad treba, bez lomljenja stupaca */
+.table-host { width: 100% !important; }
+.modern-table-wrap { width: 100% !important; border-radius: 24px !important; border: 1px solid var(--ui-border) !important; background: var(--ui-surface) !important; box-shadow: var(--ui-shadow) !important; overflow: hidden !important; }
+.modern-table-wrap .table-responsive,.table-responsive { width: 100% !important; max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; -webkit-overflow-scrolling: touch; }
+.modern-table,.table.modern-table { width: max-content !important; min-width: 1280px !important; margin-bottom: 0 !important; table-layout: auto !important; color: var(--ui-text) !important; }
+.modern-table th,.modern-table td { white-space: nowrap !important; vertical-align: middle !important; }
+.modern-table td:nth-child(5) { max-width: 440px; overflow: hidden; text-overflow: ellipsis; }
+.modern-table td:last-child,.modern-table th:last-child { min-width: 150px; }
+.modern-table thead th { position: sticky !important; top: 72px !important; z-index: 30 !important; background: linear-gradient(180deg, var(--ui-table-head-a), var(--ui-table-head-b)) !important; color: #fff !important; border: 0 !important; box-shadow: inset 0 -1px 0 rgba(255,255,255,.08) !important; }
+.modern-table thead th a,.sort-link { color: #fff !important; text-decoration: none !important; font-weight: 900 !important; }
+.modern-table tbody td { background: var(--ui-surface-solid) !important; color: var(--ui-text) !important; border-color: var(--ui-border) !important; }
+.modern-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--ui-surface-solid) 94%, var(--ui-primary) 6%) !important; }
+.row-selector { cursor: pointer; }
+.row-selector:hover td { background: color-mix(in srgb, var(--ui-surface-solid) 88%, var(--ui-primary) 12%) !important; }
+.row-selector.selected-row td { background: color-mix(in srgb, var(--ui-surface-solid) 78%, var(--ui-primary) 22%) !important; }
+.row-selector.selected-row td:first-child { border-left: 4px solid var(--ui-primary) !important; }
+.inventory-text,.primary-table-text { color: var(--ui-text) !important; font-weight: 950 !important; }
+.status-badge { border-radius: 999px !important; padding: .48rem .76rem !important; font-weight: 950 !important; }
+.selection-counter { color: var(--ui-text) !important; background: var(--ui-surface-solid) !important; border-color: var(--ui-border) !important; }
+.bulk-toolbar { align-items: center !important; gap: .85rem !important; }
+.bulk-toolbar-left { gap: .65rem !important; }
+.table-actions,.d-flex.gap-1.flex-wrap { gap: .45rem !important; }
+.hidden-row-checkbox,.row-checkbox { width: 18px !important; height: 18px !important; }
+
+/* MODALI */
+.modal-content,.modal-modern .modal-content { border: 1px solid var(--ui-border) !important; border-radius: 28px !important; background: var(--ui-surface-solid) !important; color: var(--ui-text) !important; box-shadow: 0 34px 100px rgba(0,0,0,.34) !important; overflow: hidden; }
+.modal-header,.modal-footer { border-color: var(--ui-border) !important; }
+.modal-backdrop.show { opacity: .62 !important; backdrop-filter: blur(10px); }
+
+/* BACK TO TOP */
+.back-to-top-btn,.scroll-to-top-btn { position: fixed !important; right: 56px !important; bottom: 56px !important; width: 56px !important; height: 56px !important; border: 0 !important; border-radius: 50% !important; color: #fff !important; background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; box-shadow: 0 18px 42px rgba(37,99,235,.40) !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; transform: translateY(14px) !important; transition: opacity .22s ease, visibility .22s ease, transform .22s ease !important; z-index: 2147483647 !important; }
+.back-to-top-btn.show,.scroll-to-top-btn.show { opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; transform: translateY(0) !important; }
+
+/* RESPONSIVE */
+@media (max-width: 1320px) { .dashboard-grid-v4 { grid-template-columns: repeat(2, minmax(260px, 1fr)); } .dashboard-card-v4 { min-height: 240px; } }
+@media (max-width: 980px) { .hero-panel-v4 { grid-template-columns: 1fr; } .hero-actions-v4 { min-width: 0; flex-direction: row; flex-wrap: wrap; } .hero-actions-v4 .btn { flex: 1 1 220px; } .dashboard-mini-grid-v4 { grid-template-columns: 1fr; } .admin-page-header .d-flex.justify-content-between { align-items: stretch !important; } .admin-page-header .d-flex.justify-content-end { width: 100%; justify-content: flex-start !important; flex-wrap: wrap; } }
+@media (max-width: 768px) { .app-topbar,.topbar { padding: .62rem .72rem !important; } .brand-text small { display: none; } .brand-mark { width: 40px; height: 40px; } .menu-toggle-btn { width: 42px !important; height: 42px !important; } .topbar-right { gap: .45rem !important; } .topbar-right .app-pill-btn,.topbar-right form .btn { padding-inline: .65rem !important; } .user-chip { display: none !important; } .app-main-content,.main-content { padding: .82rem !important; } .dashboard-grid-v4 { grid-template-columns: 1fr; } .dashboard-card-v4 { min-height: 214px; } .dashboard-value-v4 { font-size: clamp(3.25rem, 16vw, 4.6rem); } .mini-stat-card-v4 { min-height: 92px; } .modern-table,.table.modern-table { min-width: 1180px !important; } .modern-table thead th { top: 64px !important; } .bulk-toolbar,.bulk-toolbar-left { width: 100%; flex-direction: column; align-items: stretch !important; } .bulk-toolbar-left .btn,.bulk-toolbar .btn { width: 100%; } .selection-counter { width: 100%; text-align: center; } .back-to-top-btn,.scroll-to-top-btn { right: 22px !important; bottom: 22px !important; width: 52px !important; height: 52px !important; } }
+@media (max-width: 560px) { .hero-panel-v4 { padding: 1rem; border-radius: 22px; } .hero-panel-v4 h1 { font-size: 2.05rem; } .hero-panel-v4 p { font-size: .95rem; } .hero-actions-v4 { flex-direction: column; } .dashboard-card-v4 { padding: 1rem; border-radius: 24px; } .card-icon-v4 { width: 52px; height: 52px; border-radius: 18px; } .card-chip-v4 { font-size: .72rem; } .btn,.form-control,.form-select { width: 100%; } .topbar-right a.btn { display: none !important; } }
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+
+/* ============================================================
+   V5 TABLE STABILITY FIX - ne lomi stupce, nema praznog prostora
+   ============================================================ */
+
+/* Tablica mora biti kartica bez unutarnjeg vertikalnog scrolla. */
+.table-host,
+.modern-table-wrap,
+.table-card,
+.content-card .table-responsive,
+.modern-table-wrap .table-responsive,
+.table-responsive {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.modern-table-wrap {
+    padding: 0 !important;
+    margin-top: 0 !important;
+    overflow: hidden !important;
+    border-radius: 22px !important;
+    background: var(--ui-surface-solid) !important;
+}
+
+/* Samo horizontalni scroll ako stvarno treba. Nema vlastitog vertikalnog scrolla. */
+.modern-table-wrap .table-responsive,
+.table-responsive {
+    display: block !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* KLJUČNO: width 100%, ne max-content. Max-content je radio prazni bijeli prostor i lomio layout. */
+table.modern-table,
+.modern-table,
+.table.modern-table,
+.table {
+    width: 100% !important;
+    min-width: 1180px !important;
+    max-width: none !important;
+    margin: 0 !important;
+    table-layout: auto !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+/* Header bez onog velikog praznog razmaka. top:72px je stvarao bijelu rupu iznad tablice. */
+.modern-table thead,
+.table thead {
+    position: relative !important;
+    top: auto !important;
+}
+
+.modern-table thead th,
+.table thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+    background: linear-gradient(180deg, var(--ui-table-head-a), var(--ui-table-head-b)) !important;
+    color: #ffffff !important;
+    border: 0 !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    padding: 1rem .9rem !important;
+    font-size: .95rem !important;
+    font-weight: 950 !important;
+    box-shadow: inset 0 -1px 0 rgba(255,255,255,.08) !important;
+}
+
+.modern-table tbody td,
+.table tbody td {
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    padding: .95rem .9rem !important;
+    background: var(--ui-surface-solid) !important;
+    color: var(--ui-text) !important;
+    border-color: var(--ui-border) !important;
+    font-size: .95rem !important;
+}
+
+/* Dugački nazivi se skrate s tri točkice, ne guraju i ne lome cijelu tablicu. */
+.modern-table td,
+.table td {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.modern-table td:nth-child(4),
+.modern-table td:nth-child(5),
+.table td:nth-child(4),
+.table td:nth-child(5) {
+    max-width: 430px !important;
+}
+
+/* Prvi checkbox stupac neka bude uredan i uzak. */
+.modern-table th:first-child,
+.modern-table td:first-child,
+.table th:first-child,
+.table td:first-child {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    text-align: center !important;
+}
+
+/* Akcije neka imaju dovoljno mjesta za gumbe, ali bez razbijanja reda. */
+.modern-table th:last-child,
+.modern-table td:last-child,
+.table th:last-child,
+.table td:last-child {
+    min-width: 170px !important;
+    width: 170px !important;
+}
+
+.table-actions,
+.modern-table td:last-child .d-flex,
+.table td:last-child .d-flex {
+    display: flex !important;
+    gap: .45rem !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+}
+
+.modern-table tbody tr:nth-child(even) td,
+.table tbody tr:nth-child(even) td {
+    background: color-mix(in srgb, var(--ui-surface-solid) 94%, var(--ui-primary) 6%) !important;
+}
+
+.row-selector:hover td {
+    background: color-mix(in srgb, var(--ui-surface-solid) 88%, var(--ui-primary) 12%) !important;
+}
+
+.row-selector.selected-row td {
+    background: color-mix(in srgb, var(--ui-surface-solid) 78%, var(--ui-primary) 22%) !important;
+}
+
+/* Prazni prostor iznad tablice koji je nastao od starih kartica/omotača. */
+.modern-table-wrap::before,
+.modern-table-wrap::after,
+.table-responsive::before,
+.table-responsive::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* Ako neka stranica koristi Bootstrap card oko tablice, makni nepotrebni padding oko same tablice. */
+.card > .table-responsive,
+.card-body > .table-responsive,
+.modern-table-wrap > .table-responsive {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Mobile: tablica ostaje prava tablica, samo dobije horizontalni scroll. */
+@media (max-width: 900px) {
+    table.modern-table,
+    .modern-table,
+    .table.modern-table,
+    .table {
+        min-width: 1050px !important;
+    }
+
+    .modern-table thead th,
+    .table thead th,
+    .modern-table tbody td,
+    .table tbody td {
+        padding: .82rem .72rem !important;
+        font-size: .9rem !important;
+    }
+}
+
+@media (max-width: 560px) {
+    .modern-table-wrap {
+        border-radius: 18px !important;
+    }
+
+    table.modern-table,
+    .modern-table,
+    .table.modern-table,
+    .table {
+        min-width: 980px !important;
+    }
+}
+/* FIX: sakrij prazni autocomplete dropdown da ne ostavlja bijelu crtu */
+.autocomplete-suggestions:empty {
+    display: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+/* FIX: makni bijelu Bootstrap focus liniju u dark/moder UI filterima */
+.autocomplete-search-wrap .form-control:focus,
+.autocomplete-search-wrap .modern-input:focus,
+input[data-main-search="true"]:focus {
+    outline: none !important;
+    border-color: rgba(59, 130, 246, 0.75) !important;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18) !important;
+}
+
+/* Da prazni list-group ne crta nikakvu liniju */
+.list-group.autocomplete-suggestions:empty,
+.list-group.autocomplete-suggestions.shadow-sm:empty {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+/* FIX TABLICA - kompaktnije, bez tri točke na šiframa i checkboxu */
+.modern-table-wrap,
+.table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+.modern-table,
+.table {
+    width: 100%;
+    table-layout: auto !important;
+    border-collapse: collapse;
+}
+
+/* Kompaktniji redovi */
+.modern-table th,
+.modern-table td,
+.table th,
+.table td {
+    padding: 0.65rem 0.75rem !important;
+    font-size: 0.9rem !important;
+    vertical-align: middle !important;
+}
+
+/* Nemoj stavljati tri točke na sve stupce */
+.modern-table td,
+.table td {
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+/* Checkbox stupac nikad ne smije imati tri točke */
+.modern-table th:first-child,
+.modern-table td:first-child,
+.table th:first-child,
+.table td:first-child {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    padding-left: 0.55rem !important;
+    padding-right: 0.35rem !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+}
+
+/* Inventurni broj / šifra radnika neka se uvijek vidi */
+.modern-table th:nth-child(2),
+.modern-table td:nth-child(2),
+.table th:nth-child(2),
+.table td:nth-child(2) {
+    min-width: 90px !important;
+    max-width: 130px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    font-weight: 800;
+}
+
+/* Dugački nazivi se smiju skratiti, ali tek na većoj širini */
+.modern-table td:nth-child(4),
+.table td:nth-child(4) {
+    max-width: 260px;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* Akcije neka budu kompaktnije */
+.table-actions,
+.modern-table td:last-child,
+.table td:last-child {
+    white-space: nowrap !important;
+}
+
+.table-actions .btn,
+.modern-table .btn,
+.table .btn {
+    padding: 0.45rem 0.7rem !important;
+    font-size: 0.82rem !important;
+    border-radius: 12px !important;
+}
+
+/* Manje razvlačenje badgeva */
+.status-badge,
+.badge {
+    white-space: nowrap !important;
+    padding: 0.42rem 0.65rem !important;
+    font-size: 0.78rem !important;
+}
+
+/* Tablica opreme ima puno stupaca, ali neka ne bude ogromna */
+.equipment-table {
+    min-width: 1180px !important;
+}
+
+/* Zaposlenici i radni nalozi mogu stati lakše */
+.employees-table,
+.sites-table {
+    min-width: 850px !important;
+}
+
+/* Na manjim ekranima tablica ide horizontalno, ali normalno */
+@media (max-width: 1200px) {
+    .equipment-table {
+        min-width: 1080px !important;
+    }
+
+    .modern-table th,
+    .modern-table td,
+    .table th,
+    .table td {
+        padding: 0.55rem 0.6rem !important;
+        font-size: 0.84rem !important;
+    }
+}
+/* =========================================================
+   OPREMA TABLE FIT - CIJELA TABLICA VIDLJIVA NA EKRANU
+   ========================================================= */
+
+.equipment-table-wrap,
+.equipment-table-responsive {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+}
+
+table.equipment-table-fit {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+/* Širine stupaca */
+.equipment-table-fit .eq-col-check {
+    width: 2.4%;
+}
+
+.equipment-table-fit .eq-col-inventory {
+    width: 6%;
+}
+
+.equipment-table-fit .eq-col-serial {
+    width: 7%;
+}
+
+.equipment-table-fit .eq-col-type {
+    width: 5%;
+}
+
+.equipment-table-fit .eq-col-name {
+    width: 22%;
+}
+
+.equipment-table-fit .eq-col-status {
+    width: 7%;
+}
+
+.equipment-table-fit .eq-col-site {
+    width: 7%;
+}
+
+.equipment-table-fit .eq-col-employee {
+    width: 13%;
+}
+
+.equipment-table-fit .eq-col-date {
+    width: 7%;
+}
+
+.equipment-table-fit .eq-col-handed {
+    width: 7%;
+}
+
+.equipment-table-fit .eq-col-actions {
+    width: 16.6%;
+}
+
+/* Kompaktna tablica */
+.equipment-table-fit th,
+.equipment-table-fit td {
+    padding: 0.38rem 0.28rem !important;
+    font-size: clamp(0.58rem, 0.68vw, 0.76rem) !important;
+    line-height: 1.15 !important;
+    vertical-align: middle !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+    word-break: normal !important;
+}
+
+/* Header */
+.equipment-table-fit thead th {
+    padding-top: 0.55rem !important;
+    padding-bottom: 0.55rem !important;
+    white-space: normal !important;
+}
+
+.equipment-table-fit thead th a,
+.equipment-table-fit .sort-link {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 2px !important;
+    font-size: inherit !important;
+    line-height: 1.05 !important;
+    white-space: normal !important;
+}
+
+/* Checkbox stupac */
+.equipment-table-fit th:first-child,
+.equipment-table-fit td:first-child {
+    text-align: center !important;
+    overflow: visible !important;
+    padding-left: 0.15rem !important;
+    padding-right: 0.15rem !important;
+}
+
+.equipment-table-fit .row-checkbox,
+.equipment-table-fit .hidden-row-checkbox,
+.equipment-table-fit #selectAllEquipment {
+    width: 13px !important;
+    height: 13px !important;
+}
+
+/* Inventurni broj */
+.equipment-table-fit .inventory-text {
+    font-weight: 900 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+}
+
+/* Naziv, osoba i zadužio mogu u 2 reda */
+.equipment-name-cell,
+.equipment-employee-cell,
+.equipment-handed-cell {
+    white-space: normal !important;
+    word-break: break-word !important;
+}
+
+/* Status badge */
+.equipment-table-fit .status-badge,
+.equipment-table-fit .badge {
+    padding: 0.22rem 0.32rem !important;
+    font-size: clamp(0.52rem, 0.58vw, 0.64rem) !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+}
+
+/* Akcije */
+.equipment-actions {
+    display: flex !important;
+    gap: 0.5rem !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+}
+
+.equipment-table-fit .btn,
+.equipment-table-fit .btn-soft {
+    padding: 0.24rem 0.34rem !important;
+    font-size: clamp(0.5rem, 0.58vw, 0.64rem) !important;
+    line-height: 1.05 !important;
+    border-radius: 8px !important;
+    font-weight: 800 !important;
+    min-width: auto !important;
+}
+
+/* Ako postoje stara pravila koja forsiraju širinu tablice, pregazi ih */
+.equipment-table-fit,
+.equipment-table-fit.table,
+.equipment-table-fit.modern-table {
+    min-width: 0 !important;
+}
+
+/* Laptopi i manji ekrani - još kompaktnije */
+@media (max-width: 1400px) {
+    .equipment-table-fit th,
+    .equipment-table-fit td {
+        padding: 0.3rem 0.2rem !important;
+        font-size: 0.6rem !important;
+    }
+
+    .equipment-table-fit .btn,
+    .equipment-table-fit .btn-soft {
+        font-size: 0.54rem !important;
+        padding: 0.2rem 0.28rem !important;
+    }
+
+    .equipment-table-fit .status-badge,
+    .equipment-table-fit .badge {
+        font-size: 0.54rem !important;
+        padding: 0.18rem 0.28rem !important;
+    }
+}
+
+@media (max-width: 1100px) {
+    .equipment-table-fit th,
+    .equipment-table-fit td {
+        padding: 0.24rem 0.14rem !important;
+        font-size: 0.52rem !important;
+    }
+
+    .equipment-table-fit .btn,
+    .equipment-table-fit .btn-soft {
+        font-size: 0.48rem !important;
+        padding: 0.16rem 0.22rem !important;
+    }
+}
+/* =========================================================
+   FIX 1: AUTOCOMPLETE MORA BITI IZNAD TABLICE
+   ========================================================= */
+
+.filter-card,
+.soft-card,
+.card:has(.autocomplete-search-wrap),
+form:has(.autocomplete-search-wrap),
+.autocomplete-search-wrap {
+    position: relative !important;
+    z-index: 5000 !important;
+    overflow: visible !important;
+}
+
+.autocomplete-suggestions {
+    position: absolute !important;
+    z-index: 999999 !important;
+    background: #ffffff !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+    box-shadow: 0 22px 55px rgba(15, 23, 42, 0.22) !important;
+}
+
+.autocomplete-suggestions:empty {
+    display: none !important;
+}
+
+.modern-table-wrap,
+.table-responsive,
+.table-host,
+#equipmentTableHost,
+#employeesTableContainer,
+#sitesTableContainer {
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+.modern-table thead th,
+.table thead th {
+    z-index: 2 !important;
+}
+
+
+/* =========================================================
+   FIX 2: GLOBALNI CSS NE SMIJE RAZBIJATI SVE TABLICE
+   ========================================================= */
+
+/* Vrati normalno ponašanje za sve tablice osim opreme */
+.table:not(.equipment-table-fit),
+.modern-table:not(.equipment-table-fit) {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+}
+
+/* Normalni razmaci za sve ostale tablice */
+.table:not(.equipment-table-fit) th,
+.table:not(.equipment-table-fit) td,
+.modern-table:not(.equipment-table-fit) th,
+.modern-table:not(.equipment-table-fit) td {
+    padding: 0.85rem 1rem !important;
+    font-size: 0.95rem !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+/* Korisnici tablica - posebno popravljanje */
+.users-table,
+.account-users-table,
+table:has(form[action*="DeleteUser"]),
+table:has(form[action*="ToggleActive"]) {
+    width: 100% !important;
+    table-layout: auto !important;
+    min-width: 760px !important;
+}
+
+.users-table th,
+.users-table td,
+.account-users-table th,
+.account-users-table td,
+table:has(form[action*="DeleteUser"]) th,
+table:has(form[action*="DeleteUser"]) td,
+table:has(form[action*="ToggleActive"]) th,
+table:has(form[action*="ToggleActive"]) td {
+    padding: 0.9rem 1rem !important;
+    font-size: 0.95rem !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+table:has(form[action*="DeleteUser"]) td:nth-child(2),
+table:has(form[action*="ToggleActive"]) td:nth-child(2) {
+    white-space: normal !important;
+}
+
+table:has(form[action*="DeleteUser"]) td:last-child,
+table:has(form[action*="ToggleActive"]) td:last-child {
+    white-space: nowrap !important;
+    min-width: 220px !important;
+}
+
+
+/* =========================================================
+   FIX 3: OPREMA OSTANE KOMPAKTNA, ALI SAMO OPREMA
+   ========================================================= */
+
+.equipment-table-fit {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+}
+
+.equipment-table-fit th,
+.equipment-table-fit td {
+    padding: 0.38rem 0.28rem !important;
+    font-size: clamp(0.58rem, 0.68vw, 0.76rem) !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+}
+
+/* Ako se ipak koristi horizontalni scroll, neka bude samo za male ekrane */
+@media (max-width: 900px) {
+    .modern-table-wrap,
+    .table-responsive {
+        overflow-x: auto !important;
+    }
+
+    .table:not(.equipment-table-fit),
+    .modern-table:not(.equipment-table-fit) {
+        min-width: 760px !important;
+    }
+}/* =========================================================
+   FIX KORISNICI TABLE - ne smije naslijediti stil opreme
+   ========================================================= */
+
+.account-users-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
+}
+
+/* Vrati normalne širine stupaca */
+.account-users-table th,
+.account-users-table td {
+    padding: 0.95rem 1rem !important;
+    font-size: 0.95rem !important;
+    line-height: 1.35 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: normal !important;
+    vertical-align: middle !important;
+}
+
+/* Korisničko ime NE SMIJE biti uski checkbox stupac */
+.account-users-table th:first-child,
+.account-users-table td:first-child {
+    width: auto !important;
+    min-width: 180px !important;
+    max-width: none !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: normal !important;
+}
+
+/* Ime i prezime */
+.account-users-table th:nth-child(2),
+.account-users-table td:nth-child(2) {
+    min-width: 180px !important;
+    white-space: nowrap !important;
+}
+
+/* Uloga */
+.account-users-table th:nth-child(3),
+.account-users-table td:nth-child(3) {
+    width: 130px !important;
+    min-width: 130px !important;
+}
+
+/* Status */
+.account-users-table th:nth-child(4),
+.account-users-table td:nth-child(4) {
+    width: 130px !important;
+    min-width: 130px !important;
+}
+
+/* Akcije */
+.account-users-table th:last-child,
+.account-users-table td:last-child {
+    width: 230px !important;
+    min-width: 230px !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+}
+
+/* Gumbi u korisnicima neka budu normalni */
+.account-users-table .btn {
+    padding: 0.55rem 0.8rem !important;
+    font-size: 0.85rem !important;
+    border-radius: 12px !important;
+    line-height: 1.2 !important;
+}
+
+/* Badgevi normalni */
+.account-users-table .badge {
+    font-size: 0.78rem !important;
+    padding: 0.42rem 0.65rem !important;
+    border-radius: 10px !important;
+    white-space: nowrap !important;
+}
+
+/* Na mobitelu dopusti horizontalni scroll */
+@media (max-width: 768px) {
+    .account-users-table {
+        min-width: 760px !important;
+    }
+}
+/* =========================================================
+   FIX: sidebar uvijek mora biti iznad search/filtera
+   ========================================================= */
+
+/* Sidebar i tamni overlay moraju biti iznad svega na stranici */
+#appSidebar,
+.custom-offcanvas,
+.offcanvas {
+    z-index: 20000 !important;
+}
+
+.offcanvas-backdrop {
+    z-index: 19990 !important;
+}
+
+/* Filter/search ne smije biti iznad sidebara */
+.filter-card,
+.soft-card,
+.card:has(.autocomplete-search-wrap),
+form:has(.autocomplete-search-wrap),
+.autocomplete-search-wrap {
+    position: relative !important;
+    z-index: 30 !important;
+    overflow: visible !important;
+}
+
+/* Autocomplete neka bude iznad tablice, ali ispod sidebara */
+.autocomplete-suggestions {
+    position: absolute !important;
+    z-index: 1000 !important;
+}
+
+/* Tablice neka ostanu ispod filtera i sidebara */
+.modern-table-wrap,
+.table-responsive,
+.table-host,
+#equipmentTableHost,
+#employeesTableContainer,
+#sitesTableContainer,
+#returnsTableContainer {
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+/* Kad je sidebar otvoren, filteri sigurno idu ispod overlaya */
+body:has(.offcanvas.show) .filter-card,
+body:has(.offcanvas.show) .soft-card,
+body:has(.offcanvas.show) form:has(.autocomplete-search-wrap),
+body:has(.offcanvas.show) .autocomplete-search-wrap,
+body:has(.offcanvas.show) .autocomplete-suggestions {
+    z-index: 1 !important;
+}
+/* VEĆI GUMBI U SVIM TABLICAMA */
+.modern-table .btn,
+.modern-table .btn-soft,
+.table .btn,
+.table .btn-soft {
+    padding: 0.42rem 0.68rem !important;
+    font-size: 0.78rem !important;
+    border-radius: 12px !important;
+    line-height: 1.15 !important;
+    font-weight: 800 !important;
+}
+/* =========================================================
+   FIX: autocomplete prijedlozi moraju biti iznad formi ispod sebe,
+   ali ispod otvorenog sidebara
+   ========================================================= */
+
+.autocomplete-search-wrap {
+    position: relative !important;
+    z-index: 20 !important;
+    overflow: visible !important;
+}
+
+/* Aktivni autocomplete ide iznad ostalih inputa */
+.autocomplete-search-wrap.autocomplete-active {
+    z-index: 5000 !important;
+}
+
+/* Dropdown prijedloga */
+.autocomplete-search-wrap .autocomplete-suggestions {
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 5001 !important;
+    max-height: 260px !important;
+    overflow-y: auto !important;
+}
+
+/* Ako je sidebar otvoren, autocomplete ne smije ići preko njega */
+body:has(.offcanvas.show) .autocomplete-search-wrap,
+body:has(.offcanvas.show) .autocomplete-search-wrap.autocomplete-active,
+body:has(.offcanvas.show) .autocomplete-suggestions {
+    z-index: 1 !important;
+}
+/* AUTOCOMPLETE DROPDOWN ISPRED POLJA ISPOD NJEGA */
+.autocomplete-search-wrap {
+    position: relative !important;
+    z-index: 50 !important;
+    overflow: visible !important;
+}
+
+/* Kad je input aktivan, cijeli autocomplete wrapper ide iznad ostalih polja */
+.autocomplete-search-wrap:focus-within {
+    z-index: 10000 !important;
+}
+
+/* Lista prijedloga ide preko svega ispod inputa */
+.autocomplete-search-wrap .autocomplete-suggestions {
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 10001 !important;
+
+    display: block;
+    max-height: 260px !important;
+    overflow-y: auto !important;
+
+    background: #ffffff !important;
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 22px 55px rgba(15, 23, 42, 0.25) !important;
+}
+
+/* Ako nema rezultata, nema ni prazne crte */
+.autocomplete-search-wrap .autocomplete-suggestions:empty {
+    display: none !important;
+}
+
+/* Polja ispod ne smiju biti iznad autocompletea */
+.form-group,
+.mb-3,
+.col-md-6,
+.col-md-4,
+.col-md-3,
+.col-md-2 {
+    position: relative;
+    z-index: 1;
+}
+
+/* Kad je sidebar otvoren, sidebar ipak mora biti iznad autocompletea */
+.offcanvas,
+.custom-offcanvas,
+#appSidebar {
+    z-index: 20000 !important;
+}
+
+.offcanvas-backdrop {
+    z-index: 19990 !important;
+}
+
+
+/* =========================================================
+   FIX RAZDUŽENJE / ODABRANA OPREMA TABLE
+   Prvi stupac NIJE checkbox nego inventurni broj.
+   ========================================================= */
+
+.bulk-return-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+/* Normalni redovi i header */
+.bulk-return-table th,
+.bulk-return-table td {
+    padding: 0.85rem 1rem !important;
+    font-size: 0.92rem !important;
+    line-height: 1.3 !important;
+    vertical-align: middle !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: normal !important;
+}
+
+/* Prvi stupac je inventurni broj, ne checkbox */
+.bulk-return-table th:first-child,
+.bulk-return-table td:first-child {
+    width: 90px !important;
+    min-width: 90px !important;
+    max-width: 110px !important;
+    text-align: left !important;
+    padding-left: 1rem !important;
+    padding-right: 0.75rem !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: normal !important;
+    font-weight: 800 !important;
+}
+
+/* Naziv opreme neka dobije najviše prostora */
+.bulk-return-table th:nth-child(2),
+.bulk-return-table td:nth-child(2) {
+    width: 28% !important;
+    min-width: 220px !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+}
+
+/* Trenutni zaposlenik */
+.bulk-return-table th:nth-child(3),
+.bulk-return-table td:nth-child(3) {
+    width: 24% !important;
+    min-width: 200px !important;
+    white-space: normal !important;
+}
+
+/* Trenutni radni nalog */
+.bulk-return-table th:nth-child(4),
+.bulk-return-table td:nth-child(4) {
+    width: 24% !important;
+    min-width: 180px !important;
+    white-space: normal !important;
+}
+
+/* Datum zaduženja */
+.bulk-return-table th:nth-child(5),
+.bulk-return-table td:nth-child(5) {
+    width: 140px !important;
+    min-width: 120px !important;
+    white-space: nowrap !important;
+}
+
+/* Ako je ekran mali, dopusti horizontalni scroll */
+@media (max-width: 900px) {
+    .bulk-return-table {
+        min-width: 850px !important;
+    }
+}
+/* VEĆI STATUS BADGE U TABLICI OPREME */
+.equipment-table-fit .status-badge {
+    font-size: 0.75rem !important;
+    padding: 0.34rem 0.55rem !important;
+    border-radius: 999px !important;
+    font-weight: 900 !important;
+    line-height: 1.1 !important;
+}
+/* ============================================================
+   V6 - RESPONZIVNA GLAVNA TABLICA OPREME
+   Desktop: svi stupci na velikim ekranima.
+   Laptop: manje važni stupci ulaze ispod naziva.
+   Mobitel: svaki red postaje pregledna kartica.
+   ============================================================ */
+
+.equipment-page {
+    width: 100% !important;
+    max-width: none !important;
+    padding-inline: 0 !important;
+}
+
+.equipment-page-header-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem 1.25rem;
+}
+
+.equipment-page-title-wrap {
+    min-width: 0;
+}
+
+.equipment-page-title-wrap h1 {
+    font-size: clamp(1.65rem, 2.4vw, 2.35rem) !important;
+    font-weight: 950 !important;
+}
+
+.equipment-page-subtitle {
+    color: var(--ui-muted) !important;
+    font-weight: 650;
+}
+
+.equipment-page-actions {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: .65rem;
+}
+
+.equipment-header-btn {
+    min-height: 44px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    padding-inline: .9rem !important;
+}
+
+.equipment-table-note {
+    display: none;
+    margin: 0 0 .65rem;
+    padding: .58rem .8rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 14px;
+    color: var(--ui-muted);
+    background: var(--ui-surface);
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+.equipment-bulk-form,
+.equipment-table-host,
+.equipment-table-wrap,
+.equipment-table-responsive {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+}
+
+.equipment-table-wrap {
+    overflow: hidden !important;
+}
+
+.equipment-table-responsive {
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+}
+
+/* Osnovni desktop prikaz */
+table.equipment-table-fit,
+.equipment-table-fit,
+.equipment-table-fit.table,
+.equipment-table-fit.modern-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+.equipment-table-fit th,
+.equipment-table-fit td {
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: .62rem .48rem !important;
+    font-size: clamp(.76rem, .67vw, .9rem) !important;
+    line-height: 1.2 !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.equipment-table-fit thead th {
+    padding-top: .76rem !important;
+    padding-bottom: .76rem !important;
+    font-size: clamp(.74rem, .66vw, .88rem) !important;
+    white-space: nowrap !important;
+}
+
+.equipment-table-fit thead th a {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: .2rem !important;
+    min-width: 0;
+    font-size: inherit !important;
+    white-space: nowrap !important;
+}
+
+.equipment-table-fit .eq-check {
+    text-align: center !important;
+    padding-inline: .2rem !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.equipment-table-fit .row-checkbox,
+.equipment-table-fit .hidden-row-checkbox,
+.equipment-table-fit #selectAllEquipment {
+    width: 17px !important;
+    height: 17px !important;
+    margin: 0 !important;
+}
+
+.equipment-table-fit .eq-name,
+.equipment-table-fit .eq-site,
+.equipment-table-fit .eq-employee,
+.equipment-table-fit .eq-handed {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+}
+
+.equipment-name-main {
+    display: block;
+    min-width: 0;
+    font-weight: 850;
+    color: var(--ui-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.equipment-compact-meta {
+    display: none;
+    margin-top: .28rem;
+    flex-wrap: wrap;
+    gap: .24rem .42rem;
+    color: var(--ui-muted);
+    font-size: .68rem;
+    font-weight: 720;
+    line-height: 1.25;
+}
+
+.equipment-compact-meta > span {
+    display: none;
+    min-width: 0;
+}
+
+.equipment-table-fit .status-badge {
+    max-width: 100%;
+    padding: .34rem .52rem !important;
+    font-size: clamp(.68rem, .6vw, .78rem) !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+}
+
+.equipment-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start;
+    flex-wrap: nowrap !important;
+    gap: .32rem !important;
+}
+
+.equipment-table-fit .equipment-actions .btn {
+    min-width: 0 !important;
+    min-height: 34px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: .26rem;
+    padding: .4rem .52rem !important;
+    border-radius: 10px !important;
+    font-size: .72rem !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+}
+
+.equipment-action-icon {
+    display: inline-block;
+    line-height: 1;
+}
+
+.equipment-action-text {
+    display: inline-block;
+}
+
+/* Širine kada su svi stupci vidljivi */
+.equipment-table-fit .eq-col-check { width: 3%; }
+.equipment-table-fit .eq-col-inventory { width: 7%; }
+.equipment-table-fit .eq-col-serial { width: 8%; }
+.equipment-table-fit .eq-col-type { width: 6%; }
+.equipment-table-fit .eq-col-name { width: 17%; }
+.equipment-table-fit .eq-col-status { width: 8%; }
+.equipment-table-fit .eq-col-site { width: 12%; }
+.equipment-table-fit .eq-col-employee { width: 11%; }
+.equipment-table-fit .eq-col-date { width: 8%; }
+.equipment-table-fit .eq-col-handed { width: 8%; }
+.equipment-table-fit .eq-col-actions { width: 12%; }
+
+/* Laptopi i manji desktopi: serijski, datum i zadužio idu ispod naziva. */
+@media (max-width: 1599.98px) {
+    .equipment-table-note {
+        display: block;
+    }
+
+    .equipment-table-fit .eq-col-serial,
+    .equipment-table-fit .eq-col-date,
+    .equipment-table-fit .eq-col-handed,
+    .equipment-table-fit th.eq-serial,
+    .equipment-table-fit td.eq-serial,
+    .equipment-table-fit th.eq-date,
+    .equipment-table-fit td.eq-date,
+    .equipment-table-fit th.eq-handed,
+    .equipment-table-fit td.eq-handed {
+        display: none !important;
+    }
+
+    .equipment-table-fit .eq-col-check { width: 4%; }
+    .equipment-table-fit .eq-col-inventory { width: 10%; }
+    .equipment-table-fit .eq-col-type { width: 9%; }
+    .equipment-table-fit .eq-col-name { width: 27%; }
+    .equipment-table-fit .eq-col-status { width: 11%; }
+    .equipment-table-fit .eq-col-site { width: 15%; }
+    .equipment-table-fit .eq-col-employee { width: 14%; }
+    .equipment-table-fit .eq-col-actions { width: 10%; }
+
+    .equipment-compact-meta {
+        display: flex;
+    }
+
+    .equipment-compact-meta .meta-serial,
+    .equipment-compact-meta .meta-date,
+    .equipment-compact-meta .meta-handed {
+        display: inline;
+    }
+
+    .equipment-action-text {
+        display: none;
+    }
+
+    .equipment-table-fit .equipment-actions .btn {
+        width: 32px !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        padding: 0 !important;
+        font-size: .86rem !important;
+    }
+}
+
+/* Uži laptop / tablet landscape: vrsta također ide ispod naziva. */
+@media (max-width: 1199.98px) {
+    .equipment-page-header-row {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .equipment-page-actions {
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .equipment-header-btn {
+        flex: 1 1 210px;
+    }
+
+    .equipment-table-fit .eq-col-type,
+    .equipment-table-fit th.eq-type,
+    .equipment-table-fit td.eq-type {
+        display: none !important;
+    }
+
+    .equipment-table-fit .eq-col-check { width: 4%; }
+    .equipment-table-fit .eq-col-inventory { width: 12%; }
+    .equipment-table-fit .eq-col-name { width: 34%; }
+    .equipment-table-fit .eq-col-status { width: 12%; }
+    .equipment-table-fit .eq-col-site { width: 16%; }
+    .equipment-table-fit .eq-col-employee { width: 12%; }
+    .equipment-table-fit .eq-col-actions { width: 10%; }
+
+    .equipment-compact-meta .meta-type {
+        display: inline;
+    }
+
+    .equipment-table-fit th,
+    .equipment-table-fit td {
+        padding: .58rem .4rem !important;
+        font-size: .78rem !important;
+    }
+}
+
+/* Tablet portrait: RN također ide ispod naziva. */
+@media (max-width: 991.98px) {
+    .equipment-table-fit .eq-col-site,
+    .equipment-table-fit th.eq-site,
+    .equipment-table-fit td.eq-site {
+        display: none !important;
+    }
+
+    .equipment-table-fit .eq-col-check { width: 5%; }
+    .equipment-table-fit .eq-col-inventory { width: 14%; }
+    .equipment-table-fit .eq-col-name { width: 37%; }
+    .equipment-table-fit .eq-col-status { width: 14%; }
+    .equipment-table-fit .eq-col-employee { width: 18%; }
+    .equipment-table-fit .eq-col-actions { width: 12%; }
+
+    .equipment-compact-meta .meta-site {
+        display: inline;
+    }
+
+    .equipment-page-actions {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .equipment-header-btn {
+        width: 100%;
+    }
+}
+
+/* Mobitel: svaki zapis postaje kartica i svi podaci ostaju dostupni. */
+@media (max-width: 767.98px) {
+    .equipment-page {
+        padding-top: .75rem !important;
+    }
+
+    .equipment-page-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .equipment-table-note {
+        display: none;
+    }
+
+    .equipment-bulk-form .bulk-toolbar,
+    .equipment-bulk-form .bulk-toolbar-left {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+    }
+
+    .equipment-bulk-form .bulk-toolbar .btn,
+    .equipment-bulk-form .selection-counter {
+        width: 100% !important;
+    }
+
+    .equipment-table-wrap {
+        overflow: visible !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .equipment-table-responsive {
+        overflow: visible !important;
+    }
+
+    table.equipment-table-fit,
+    .equipment-table-fit,
+    .equipment-table-fit tbody {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .equipment-table-fit colgroup,
+    .equipment-table-fit thead {
+        display: none !important;
+    }
+
+    .equipment-table-fit tbody {
+        display: grid !important;
+        grid-template-columns: 1fr;
+        gap: .85rem;
+    }
+
+    .equipment-table-fit tr.row-selector {
+        position: relative;
+        display: block !important;
+        width: 100% !important;
+        overflow: hidden;
+        border: 1px solid var(--ui-border);
+        border-radius: 20px;
+        background: var(--ui-surface-solid);
+        box-shadow: var(--ui-shadow-soft);
+    }
+
+    .equipment-table-fit tr.row-selector.selected-row {
+        border-color: var(--ui-primary) !important;
+        box-shadow: 0 0 0 3px var(--ui-ring), var(--ui-shadow-soft) !important;
+    }
+
+    .equipment-table-fit tr.row-selector td,
+    .equipment-table-fit tr.row-selector td.eq-serial,
+    .equipment-table-fit tr.row-selector td.eq-type,
+    .equipment-table-fit tr.row-selector td.eq-site,
+    .equipment-table-fit tr.row-selector td.eq-date,
+    .equipment-table-fit tr.row-selector td.eq-handed {
+        display: grid !important;
+        grid-template-columns: minmax(92px, 34%) minmax(0, 1fr);
+        align-items: center;
+        gap: .65rem;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        padding: .68rem .85rem !important;
+        border: 0 !important;
+        border-bottom: 1px solid var(--ui-border) !important;
+        background: transparent !important;
+        color: var(--ui-text) !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        font-size: .88rem !important;
+        line-height: 1.3 !important;
+    }
+
+    .equipment-table-fit tr.row-selector td::before {
+        content: attr(data-label);
+        color: var(--ui-muted);
+        font-size: .72rem;
+        font-weight: 900;
+        letter-spacing: .035em;
+        text-transform: uppercase;
+    }
+
+    .equipment-table-fit tr.row-selector td.eq-check {
+        position: absolute;
+        top: .72rem;
+        right: .78rem;
+        z-index: 2;
+        display: block !important;
+        width: auto !important;
+        padding: 0 !important;
+        border: 0 !important;
+    }
+
+    .equipment-table-fit tr.row-selector td.eq-check::before {
+        display: none !important;
+    }
+
+    .equipment-table-fit tr.row-selector td.eq-inventory {
+        padding-right: 3.2rem !important;
+        background: color-mix(in srgb, var(--ui-surface-solid) 88%, var(--ui-primary) 12%) !important;
+        font-size: .98rem !important;
+    }
+
+    .equipment-table-fit tr.row-selector td.eq-name,
+    .equipment-table-fit tr.row-selector td.eq-actions {
+        grid-template-columns: 1fr;
+        gap: .38rem;
+    }
+
+    .equipment-table-fit tr.row-selector td.eq-name::before,
+    .equipment-table-fit tr.row-selector td.eq-actions::before {
+        margin-bottom: .1rem;
+    }
+
+    .equipment-table-fit tr.row-selector td.eq-actions {
+        border-bottom: 0 !important;
+    }
+
+    .equipment-name-main {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+    }
+
+    .equipment-compact-meta {
+        display: none !important;
+    }
+
+    .equipment-actions {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+        gap: .45rem !important;
+    }
+
+    .equipment-table-fit .equipment-actions .btn {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 40px !important;
+        padding: .55rem .45rem !important;
+        font-size: .78rem !important;
+    }
+
+    .equipment-action-text {
+        display: inline-block !important;
+    }
+
+    .equipment-table-fit .equipment-empty-row,
+    .equipment-table-fit .equipment-empty-cell {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .equipment-table-fit .equipment-empty-cell {
+        border: 1px solid var(--ui-border) !important;
+        border-radius: 18px;
+        background: var(--ui-surface-solid) !important;
+    }
+
+    .equipment-table-fit .equipment-empty-cell::before {
+        display: none !important;
+    }
+}
+
+@media (max-width: 420px) {
+    .equipment-actions {
+        grid-template-columns: 1fr !important;
+    }
+
+    .equipment-table-fit tr.row-selector td,
+    .equipment-table-fit tr.row-selector td.eq-serial,
+    .equipment-table-fit tr.row-selector td.eq-type,
+    .equipment-table-fit tr.row-selector td.eq-site,
+    .equipment-table-fit tr.row-selector td.eq-date,
+    .equipment-table-fit tr.row-selector td.eq-handed {
+        grid-template-columns: 82px minmax(0, 1fr);
+        padding-inline: .72rem !important;
+    }
+}
+
+/* ============================================================
+   TONERI I TINTE - kontrola dostupnosti potrošnog materijala
+   ============================================================ */
+.consumables-page,
+.consumable-form-page {
+    width: 100%;
+}
+
+.consumables-page-header,
+.consumable-form-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.consumables-page-header h1,
+.consumable-form-header h1 {
+    font-weight: 950;
+}
+
+.consumables-kicker {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: .45rem;
+    padding: .3rem .7rem;
+    border-radius: 999px;
+    color: var(--ui-primary);
+    background: color-mix(in srgb, var(--ui-primary) 12%, transparent);
+    font-size: .72rem;
+    font-weight: 950;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.consumables-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .65rem;
+    flex-wrap: wrap;
+}
+
+.consumables-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(150px, 1fr));
+    gap: .85rem;
+}
+
+.consumables-stat-card {
+    min-height: 96px;
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    padding: 1rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 22px;
+    color: var(--ui-text) !important;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-soft);
+    text-decoration: none !important;
+    backdrop-filter: blur(16px);
+}
+
+.consumables-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--ui-shadow);
+}
+
+.consumables-stat-card strong {
+    display: block;
+    color: var(--ui-text);
+    font-size: 1.65rem;
+    font-weight: 950;
+    line-height: 1;
+}
+
+.consumables-stat-card small {
+    display: block;
+    margin-top: .32rem;
+    color: var(--ui-muted);
+    font-size: .78rem;
+    font-weight: 850;
+}
+
+.consumables-stat-icon {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 17px;
+    font-size: 1.25rem;
+    font-weight: 950;
+}
+
+.consumables-stat-card--all .consumables-stat-icon {
+    color: #1d4ed8;
+    background: rgba(37, 99, 235, .14);
+}
+
+.consumables-stat-card--available .consumables-stat-icon {
+    color: #047857;
+    background: rgba(16, 185, 129, .15);
+}
+
+.consumables-stat-card--ordered .consumables-stat-icon {
+    color: #b45309;
+    background: rgba(245, 158, 11, .18);
+}
+
+.consumables-stat-card--missing .consumables-stat-icon {
+    color: #b91c1c;
+    background: rgba(239, 68, 68, .15);
+}
+
+.consumables-stat-card--low .consumables-stat-icon {
+    color: #7c3aed;
+    background: rgba(124, 58, 237, .14);
+}
+
+.consumables-filter-card,
+.consumables-table-card,
+.consumable-form-card {
+    border: 1px solid var(--ui-border);
+    border-radius: 24px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-soft);
+    backdrop-filter: blur(18px);
+}
+
+.consumables-filter-card {
+    padding: 1.15rem;
+}
+
+.consumables-filter-card .form-label,
+.consumable-form-card .form-label {
+    margin-bottom: .4rem;
+    color: var(--ui-muted);
+    font-size: .78rem;
+    font-weight: 900;
+}
+
+.consumables-unit-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 46px;
+    padding: .65rem .9rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 15px;
+    color: var(--ui-muted);
+    background: var(--ui-surface-solid);
+    font-size: .86rem;
+    font-weight: 750;
+}
+
+.consumables-unit-summary strong {
+    color: var(--ui-text);
+}
+
+.consumables-table-card {
+    overflow: hidden;
+}
+
+.consumables-table-card .table-responsive {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+}
+
+.table.consumables-table {
+    width: 100% !important;
+    min-width: 980px !important;
+    table-layout: fixed !important;
+    margin: 0 !important;
+}
+
+.consumables-table thead th {
+    position: static !important;
+    top: auto !important;
+    padding: .95rem 1rem !important;
+    color: #fff !important;
+    background: linear-gradient(180deg, var(--ui-table-head-a), var(--ui-table-head-b)) !important;
+    border: 0 !important;
+    font-size: .82rem !important;
+    font-weight: 950 !important;
+    letter-spacing: .03em;
+    white-space: nowrap !important;
+}
+
+.consumables-table thead th:nth-child(1) { width: 23%; }
+.consumables-table thead th:nth-child(2) { width: 25%; }
+.consumables-table thead th:nth-child(3) { width: 21%; }
+.consumables-table thead th:nth-child(4) { width: 13%; }
+.consumables-table thead th:nth-child(5) { width: 18%; }
+
+.consumables-table tbody td {
+    padding: .95rem 1rem !important;
+    color: var(--ui-text) !important;
+    background: var(--ui-surface-solid) !important;
+    border-color: var(--ui-border) !important;
+    vertical-align: middle !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.consumables-table tbody tr:nth-child(even) td {
+    background: color-mix(in srgb, var(--ui-surface-solid) 96%, var(--ui-primary) 4%) !important;
+}
+
+.consumables-table tbody tr:hover td {
+    background: color-mix(in srgb, var(--ui-surface-solid) 90%, var(--ui-primary) 10%) !important;
+}
+
+.consumable-row-inactive {
+    opacity: .65;
+}
+
+.consumable-primary-text {
+    color: var(--ui-text);
+    font-weight: 950;
+    line-height: 1.25;
+}
+
+.consumable-meta-list,
+.consumable-product-details {
+    display: flex;
+    align-items: center;
+    gap: .35rem .55rem;
+    flex-wrap: wrap;
+    margin-top: .42rem;
+}
+
+.consumable-meta-list span {
+    color: var(--ui-muted);
+    font-size: .74rem;
+    font-weight: 750;
+}
+
+.consumable-code,
+.consumable-type-pill,
+.consumable-color-pill,
+.consumable-original-pill,
+.consumable-inactive-badge,
+.consumable-low-stock-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: .32rem;
+    border-radius: 999px;
+    padding: .25rem .52rem;
+    font-size: .7rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.consumable-code {
+    color: var(--ui-primary);
+    background: color-mix(in srgb, var(--ui-primary) 11%, transparent);
+}
+
+.consumable-type-pill {
+    color: var(--ui-text);
+    background: var(--ui-surface-soft);
+    border: 1px solid var(--ui-border);
+}
+
+.consumable-color-pill {
+    color: var(--ui-text);
+    background: var(--ui-surface-soft);
+    border: 1px solid var(--ui-border);
+}
+
+.consumable-original-pill {
+    color: #6d28d9;
+    background: rgba(124, 58, 237, .13);
+}
+
+.consumable-color-dot {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 9px;
+    border-radius: 50%;
+    border: 1px solid rgba(15, 23, 42, .2);
+}
+
+.consumable-color-dot--black { background: #111827; }
+.consumable-color-dot--cyan { background: #06b6d4; }
+.consumable-color-dot--magenta { background: #db2777; }
+.consumable-color-dot--yellow { background: #facc15; }
+.consumable-color-dot--multi {
+    background: conic-gradient(#06b6d4 0 25%, #db2777 25% 50%, #facc15 50% 75%, #111827 75% 100%);
+}
+.consumable-color-dot--neutral { background: #94a3b8; }
+
+.consumable-notes {
+    max-width: 360px;
+    margin-top: .45rem;
+    color: var(--ui-muted);
+    font-size: .75rem;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.consumable-quantity-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(58px, 1fr));
+    gap: .4rem;
+}
+
+.consumable-quantity {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: .48rem .38rem;
+    border-radius: 13px;
+    text-align: center;
+}
+
+.consumable-quantity small {
+    font-size: .62rem;
+    font-weight: 850;
+    line-height: 1;
+}
+
+.consumable-quantity strong {
+    margin-top: .22rem;
+    font-size: 1.1rem;
+    font-weight: 950;
+    line-height: 1;
+}
+
+.consumable-quantity--available {
+    color: #047857;
+    background: rgba(16, 185, 129, .13);
+}
+
+.consumable-quantity--ordered {
+    color: #b45309;
+    background: rgba(245, 158, 11, .15);
+}
+
+.consumable-quantity--minimum {
+    color: var(--ui-muted);
+    background: var(--ui-surface-soft);
+    border: 1px solid var(--ui-border);
+}
+
+.consumable-low-stock-warning {
+    margin-top: .4rem;
+    color: #7c2d12;
+    background: rgba(251, 146, 60, .17);
+}
+
+.consumable-status {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    max-width: 100%;
+    padding: .48rem .68rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 950;
+    line-height: 1.15;
+}
+
+.consumable-status-dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.consumable-status--available {
+    color: #047857;
+    background: rgba(16, 185, 129, .14);
+}
+
+.consumable-status--ordered {
+    color: #b45309;
+    background: rgba(245, 158, 11, .17);
+}
+
+.consumable-status--missing {
+    color: #b91c1c;
+    background: rgba(239, 68, 68, .14);
+}
+
+.consumable-inactive-badge {
+    margin-top: .45rem;
+    color: var(--ui-muted);
+    background: var(--ui-surface-soft);
+    border: 1px solid var(--ui-border);
+}
+
+.consumable-actions {
+    display: flex;
+    align-items: center;
+    gap: .38rem;
+    flex-wrap: wrap;
+}
+
+.consumable-actions .btn {
+    padding: .38rem .58rem !important;
+    font-size: .72rem !important;
+}
+
+.consumables-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 360px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.consumables-empty-state h3 {
+    margin: .8rem 0 .35rem;
+    font-weight: 950;
+}
+
+.consumables-empty-state p {
+    color: var(--ui-muted);
+}
+
+.consumables-empty-icon {
+    font-size: 3rem;
+}
+
+.consumable-form-card {
+    padding: clamp(1rem, 2.5vw, 1.6rem);
+}
+
+.consumable-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.consumable-form-section {
+    padding: 1.15rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 20px;
+    background: color-mix(in srgb, var(--ui-surface-solid) 92%, var(--ui-primary) 8%);
+}
+
+.consumable-form-section--wide {
+    grid-column: 1 / -1;
+}
+
+.consumable-form-section-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+
+.consumable-form-section-heading > span {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 15px;
+    background: color-mix(in srgb, var(--ui-primary) 13%, transparent);
+    font-size: 1.15rem;
+}
+
+.consumable-form-section-heading h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 950;
+}
+
+.consumable-form-section-heading p {
+    margin: .22rem 0 0;
+    color: var(--ui-muted);
+    font-size: .78rem;
+}
+
+.consumable-switch-field {
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .6rem .85rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 15px;
+    background: var(--ui-surface-solid);
+}
+
+.consumable-switch-field .form-check-input {
+    margin: 0;
+}
+
+.consumable-switch-field .form-check-label {
+    color: var(--ui-text);
+    font-weight: 850;
+}
+
+.consumable-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .65rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--ui-border);
+}
+
+@media (max-width: 1300px) {
+    .consumables-stats-grid {
+        grid-template-columns: repeat(3, minmax(160px, 1fr));
+    }
+
+    .table.consumables-table {
+        min-width: 900px !important;
+    }
+}
+
+@media (max-width: 900px) {
+    .consumables-stats-grid {
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+    }
+
+    .consumable-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .consumable-form-section--wide {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 700px) {
+    .consumables-page-header,
+    .consumable-form-header {
+        flex-direction: column;
+    }
+
+    .consumables-header-actions,
+    .consumables-header-actions .btn,
+    .consumable-form-header .btn {
+        width: 100%;
+    }
+
+    .consumables-unit-summary {
+        width: 100%;
+        justify-content: center;
+        margin-left: 0 !important;
+    }
+
+    .consumables-table-card {
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        overflow: visible;
+    }
+
+    .consumables-table-card .table-responsive {
+        overflow: visible !important;
+    }
+
+    .table.consumables-table {
+        min-width: 0 !important;
+        border-collapse: separate !important;
+        border-spacing: 0 .8rem !important;
+    }
+
+    .consumables-table thead {
+        display: none;
+    }
+
+    .consumables-table,
+    .consumables-table tbody,
+    .consumables-table tr,
+    .consumables-table td {
+        display: block;
+        width: 100% !important;
+    }
+
+    .consumables-table tbody tr {
+        overflow: hidden;
+        border: 1px solid var(--ui-border);
+        border-radius: 20px;
+        background: var(--ui-surface-solid);
+        box-shadow: var(--ui-shadow-soft);
+    }
+
+    .consumables-table tbody td,
+    .consumables-table tbody tr:nth-child(even) td {
+        display: grid;
+        grid-template-columns: minmax(92px, 30%) minmax(0, 1fr);
+        gap: .75rem;
+        padding: .8rem .9rem !important;
+        border: 0 !important;
+        border-bottom: 1px solid var(--ui-border) !important;
+        background: var(--ui-surface-solid) !important;
+        text-align: left !important;
+    }
+
+    .consumables-table tbody td:last-child {
+        border-bottom: 0 !important;
+    }
+
+    .consumables-table tbody td::before {
+        content: attr(data-label);
+        color: var(--ui-muted);
+        font-size: .7rem;
+        font-weight: 950;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .consumable-actions {
+        justify-content: flex-start !important;
+    }
+
+    .consumable-form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .consumable-form-actions .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .consumables-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .consumables-stat-card {
+        min-height: 82px;
+    }
+
+    .consumables-table tbody td {
+        grid-template-columns: 1fr;
+        gap: .35rem;
+    }
+
+    .consumable-quantity-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* =========================================================
+   TONERI I TINTE V2 - slobodan unos printera, jedna pretraga
+   ========================================================= */
+.single-search-card {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: 1rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 22px;
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-soft);
+    flex-wrap: wrap;
+}
+.single-search-card .form-control { flex: 1 1 420px; }
+.consumables-stats-grid--four { grid-template-columns: repeat(4, minmax(170px, 1fr)) !important; }
+.consumables-stat-card.is-selected { outline: 3px solid var(--ui-primary); outline-offset: 2px; }
+.consumables-table-v2 { min-width: 1180px !important; }
+.consumables-table-v2 th:first-child,
+.consumables-table-v2 td:first-child { width: 300px !important; min-width: 260px !important; max-width: 360px !important; text-align: left !important; }
+.consumables-table-v2 th:last-child,
+.consumables-table-v2 td:last-child { min-width: 330px !important; width: 330px !important; }
+.compatible-printer-list { display: flex; flex-wrap: wrap; gap: .38rem; }
+.compatible-printer-chip { display: inline-flex; padding: .28rem .55rem; border-radius: 999px; background: color-mix(in srgb, var(--ui-primary) 10%, var(--ui-surface-solid)); border: 1px solid color-mix(in srgb, var(--ui-primary) 25%, var(--ui-border)); color: var(--ui-text); font-size: .76rem; font-weight: 800; white-space: normal; }
+.product-kind-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: .38rem .68rem; font-size: .76rem; font-weight: 900; }
+.product-kind-original { background: rgba(16,185,129,.14); color: #047857; }
+.product-kind-replacement { background: rgba(249,115,22,.16); color: #c2410c; }
+.quantity-big { font-size: 1.2rem; font-weight: 950; }
+.quantity-available { color: #059669; }
+.quantity-ordered { color: #d97706; }
+.consumable-form-grid--simple { grid-template-columns: 1fr !important; }
+
+/* Evidencija tonera */
+.history-filter-card { display: grid; grid-template-columns: 170px 170px minmax(260px,1fr) 210px auto; gap: .8rem; align-items: end; padding: 1rem; border-radius: 22px; border: 1px solid var(--ui-border); background: var(--ui-surface); box-shadow: var(--ui-shadow-soft); }
+.history-filter-actions { display: flex; gap: .5rem; }
+.history-summary-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
+.history-summary-card { padding: 1.15rem; }
+.history-summary-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .8rem; }
+.history-summary-heading > div { display: flex; align-items: center; gap: .55rem; }
+.history-mini-list { display: flex; flex-direction: column; gap: .55rem; max-height: 340px; overflow-y: auto; }
+.history-mini-list > div { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem .8rem; border: 1px solid var(--ui-border); border-radius: 14px; background: var(--ui-surface-solid); }
+.history-mini-list span { display: flex; flex-direction: column; min-width: 0; }
+.history-mini-list small { color: var(--ui-muted); margin-top: .18rem; }
+.history-table { min-width: 920px !important; }
+
+/* Koš */
+.recycle-group { border-radius: 22px; }
+.recycle-group-title { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .65rem; font-size: 1.02rem; font-weight: 950; }
+.recycle-table { min-width: 920px !important; }
+.recycle-table th:first-child,
+.recycle-table td:first-child { width: auto !important; min-width: 260px !important; max-width: none !important; text-align: left !important; }
+.recycle-table th:last-child,
+.recycle-table td:last-child { min-width: 230px !important; width: 230px !important; }
+
+/* Profil */
+.user-chip-link { color: inherit !important; text-decoration: none !important; }
+.user-avatar-image { object-fit: cover; border: 2px solid rgba(255,255,255,.7); }
+.profile-card { padding: clamp(1rem,3vw,1.6rem); border-radius: 28px; border: 1px solid var(--ui-border); background: var(--ui-surface); box-shadow: var(--ui-shadow); }
+.profile-avatar-panel { display: grid; grid-template-columns: 150px minmax(0,1fr); gap: 1.2rem; align-items: center; padding: 1rem; border-radius: 22px; border: 1px solid var(--ui-border); background: var(--ui-surface-solid); margin-bottom: 1rem; }
+.profile-avatar-large { width: 140px; height: 140px; border-radius: 32px; object-fit: cover; box-shadow: var(--ui-shadow-soft); }
+.profile-avatar-placeholder { display: grid; place-items: center; color: #fff; font-size: 3rem; font-weight: 950; background: linear-gradient(135deg,#2563eb,#7c3aed); }
+.profile-form-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; }
+.profile-password-box { margin-top: 1rem; padding: 1rem; border-radius: 22px; border: 1px solid var(--ui-border); background: color-mix(in srgb,var(--ui-surface-solid) 94%,var(--ui-primary) 6%); }
+.profile-password-box h2 { font-size: 1.1rem; font-weight: 950; }
+
+/* Rođendanska poruka */
+.birthday-overlay { position: fixed; inset: 0; z-index: 30000; display: grid; place-items: center; padding: 1rem; background: radial-gradient(circle at 10% 20%,rgba(244,63,94,.35),transparent 30%), radial-gradient(circle at 90% 10%,rgba(59,130,246,.35),transparent 30%), radial-gradient(circle at 50% 90%,rgba(250,204,21,.35),transparent 35%), rgba(15,23,42,.82); backdrop-filter: blur(10px); overflow: hidden; }
+.birthday-card { position: relative; z-index: 2; width: min(620px,94vw); padding: clamp(2rem,5vw,3.5rem); text-align: center; border-radius: 34px; background: linear-gradient(135deg,#fff7ed,#fdf2f8 50%,#eff6ff); color: #0f172a; box-shadow: 0 40px 110px rgba(0,0,0,.38); animation: birthday-pop .5s ease both; }
+.birthday-card h2 { color: #7c3aed !important; font-size: clamp(2rem,5vw,3.4rem); font-weight: 950; }
+.birthday-card p { font-size: 1.1rem; color: #475569; }
+.birthday-emoji { font-size: clamp(3rem,9vw,5rem); margin-bottom: .7rem; }
+.birthday-confetti::before,.birthday-confetti::after { content:"🎉  🎈  ✨  🎊  🎂  🎁  ⭐  🥳"; position: absolute; inset: -20%; font-size: clamp(2rem,5vw,4rem); letter-spacing: 2.5rem; line-height: 3; transform: rotate(-12deg); animation: birthday-float 8s linear infinite; opacity: .9; }
+.birthday-confetti::after { transform: rotate(15deg); animation-direction: reverse; animation-duration: 10s; }
+@keyframes birthday-pop { from { opacity:0; transform:scale(.85) translateY(30px); } to { opacity:1; transform:none; } }
+@keyframes birthday-float { from { translate:0 -4%; } to { translate:0 12%; } }
+
+@media (max-width: 1100px) {
+    .history-filter-card { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    .history-search-field { grid-column: 1 / -1; }
+    .history-filter-actions { grid-column: 1 / -1; }
+    .profile-form-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 800px) {
+    .consumables-stats-grid--four { grid-template-columns: repeat(2,minmax(150px,1fr)) !important; }
+    .history-summary-grid { grid-template-columns: 1fr; }
+    .profile-avatar-panel { grid-template-columns: 1fr; text-align: center; }
+    .profile-avatar-large { margin-inline: auto; }
+    .profile-form-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+    .single-search-card > * { width: 100%; }
+    .consumables-stats-grid--four { grid-template-columns: 1fr !important; }
+    .history-filter-card { grid-template-columns: 1fr; }
+    .history-search-field,.history-filter-actions { grid-column: auto; }
+    .history-filter-actions { flex-direction: column; }
+}
+
+
+/* =========================================================
+   ROĐENDANSKA ČESTITKA - pouzdani prikaz nakon prijave
+   ========================================================= */
+.birthday-overlay[hidden] {
+    display: none !important;
+}
+
+.birthday-overlay {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .22s ease, visibility .22s ease;
+}
+
+.birthday-overlay.is-visible {
+    display: grid !important;
+    opacity: 1;
+    visibility: visible;
+}
+
+body.birthday-celebrating {
+    overflow: hidden !important;
+}
+
+body.birthday-celebrating::after {
+    content: "🎉  ✨  🎈  🎊  🎂  ⭐";
+    position: fixed;
+    inset: 0;
+    z-index: 29999;
+    pointer-events: none;
+    display: grid;
+    place-items: center;
+    color: transparent;
+    text-shadow:
+        -42vw -34vh 0 #f43f5e,
+         42vw -35vh 0 #3b82f6,
+        -44vw  35vh 0 #f59e0b,
+         43vw  34vh 0 #8b5cf6;
+    font-size: clamp(2rem, 4vw, 4rem);
+    animation: birthday-page-pulse 1.8s ease-in-out infinite alternate;
+}
+
+.birthday-kicker {
+    display: inline-flex;
+    margin-bottom: .6rem;
+    padding: .4rem .85rem;
+    border-radius: 999px;
+    color: #9d174d;
+    background: rgba(244, 114, 182, .16);
+    font-size: .78rem;
+    font-weight: 950;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+@keyframes birthday-page-pulse {
+    from { opacity: .55; transform: scale(.98); }
+    to { opacity: 1; transform: scale(1.03); }
+}
+
+/* =========================================================
+   FIX - TONERI I TINTE V2: stupci se više ne preklapaju
+   Stari stil bio je napravljen za 5 stupaca, a nova tablica
+   ima 9 stupaca. Zato su se Dostupno, Naručeno, Status i
+   Akcije gurali jedan preko drugoga.
+   ========================================================= */
+.table.consumables-table-v2 {
+    width: 100% !important;
+    min-width: 1360px !important;
+    table-layout: fixed !important;
+}
+
+.consumables-table-v2 thead th,
+.consumables-table-v2 tbody td {
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.consumables-table-v2 thead th {
+    white-space: nowrap !important;
+}
+
+.consumables-table-v2 .sort-link {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: .35rem !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+/* 1. Kompatibilni printeri */
+.consumables-table-v2 thead th:nth-child(1),
+.consumables-table-v2 tbody td:nth-child(1) {
+    width: 230px !important;
+    min-width: 230px !important;
+    max-width: 230px !important;
+    text-align: left !important;
+}
+
+/* 2. Artikl */
+.consumables-table-v2 thead th:nth-child(2),
+.consumables-table-v2 tbody td:nth-child(2) {
+    width: 180px !important;
+    min-width: 180px !important;
+    max-width: 180px !important;
+}
+
+/* 3. Vrsta */
+.consumables-table-v2 thead th:nth-child(3),
+.consumables-table-v2 tbody td:nth-child(3) {
+    width: 155px !important;
+    min-width: 155px !important;
+    max-width: 155px !important;
+}
+
+/* 4. Boja */
+.consumables-table-v2 thead th:nth-child(4),
+.consumables-table-v2 tbody td:nth-child(4) {
+    width: 90px !important;
+    min-width: 90px !important;
+    max-width: 90px !important;
+}
+
+/* 5. Original / zamjenski */
+.consumables-table-v2 thead th:nth-child(5),
+.consumables-table-v2 tbody td:nth-child(5) {
+    width: 125px !important;
+    min-width: 125px !important;
+    max-width: 125px !important;
+}
+
+/* 6. Dostupno */
+.consumables-table-v2 thead th:nth-child(6),
+.consumables-table-v2 tbody td:nth-child(6) {
+    width: 95px !important;
+    min-width: 95px !important;
+    max-width: 95px !important;
+    text-align: center !important;
+}
+
+/* 7. Naručeno */
+.consumables-table-v2 thead th:nth-child(7),
+.consumables-table-v2 tbody td:nth-child(7) {
+    width: 105px !important;
+    min-width: 105px !important;
+    max-width: 105px !important;
+    text-align: center !important;
+}
+
+/* 8. Status */
+.consumables-table-v2 thead th:nth-child(8),
+.consumables-table-v2 tbody td:nth-child(8) {
+    width: 125px !important;
+    min-width: 125px !important;
+    max-width: 125px !important;
+    text-align: center !important;
+}
+
+/* 9. Akcije */
+.consumables-table-v2 thead th:nth-child(9),
+.consumables-table-v2 tbody td:nth-child(9) {
+    width: 355px !important;
+    min-width: 355px !important;
+    max-width: 355px !important;
+    text-align: right !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.consumables-table-v2 .consumable-actions {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: .4rem !important;
+    white-space: nowrap !important;
+}
+
+.consumables-table-v2 .consumable-actions .btn {
+    flex: 0 0 auto !important;
+}
+
+.consumables-table-v2 .compatible-printer-list {
+    max-width: 100% !important;
+}
+
+.consumables-table-v2 .compatible-printer-chip {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+@media (max-width: 768px) {
+    .table.consumables-table-v2 {
+        min-width: 0 !important;
+    }
+
+    .consumables-table-v2 tbody td {
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        text-align: left !important;
+    }
+
+    .consumables-table-v2 tbody td:last-child {
+        text-align: left !important;
+    }
+
+    .consumables-table-v2 .consumable-actions {
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
+    }
+}
+
+/* ============================================================
+   V3 toner/printer picker + evidence table fixes
+   ============================================================ */
+.table.consumables-table.consumables-table-v2 {
+    min-width: 1360px !important;
+    table-layout: fixed !important;
+}
+
+.consumables-table.consumables-table-v2 thead th:nth-child(1) { width: 23% !important; }
+.consumables-table.consumables-table-v2 thead th:nth-child(2) { width: 19% !important; }
+.consumables-table.consumables-table-v2 thead th:nth-child(3) { width: 9% !important; }
+.consumables-table.consumables-table-v2 thead th:nth-child(4) { width: 8% !important; }
+.consumables-table.consumables-table-v2 thead th:nth-child(5) { width: 10% !important; }
+.consumables-table.consumables-table-v2 thead th:nth-child(6) { width: 8% !important; }
+.consumables-table.consumables-table-v2 thead th:nth-child(7) { width: 8% !important; }
+.consumables-table.consumables-table-v2 thead th:nth-child(8) { width: 9% !important; }
+.consumables-table.consumables-table-v2 thead th:nth-child(9) { width: 16% !important; }
+
+.compatible-printer-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .38rem;
+    align-items: center;
+}
+
+.compatible-printer-chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: .28rem .55rem;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, .10);
+    color: var(--ui-text);
+    border: 1px solid rgba(37, 99, 235, .18);
+    font-size: .76rem;
+    font-weight: 850;
+    line-height: 1.15;
+}
+
+.printer-multi-picker {
+    position: relative;
+    border: 1px solid var(--ui-border);
+    background: var(--ui-surface-solid);
+    border-radius: 20px;
+    padding: .85rem;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, .05);
+}
+
+.printer-picker-selected {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+    min-height: 42px;
+    align-items: center;
+    padding-bottom: .75rem;
+    border-bottom: 1px solid var(--ui-border);
+    margin-bottom: .75rem;
+}
+
+.printer-picker-empty {
+    color: var(--ui-muted);
+    font-weight: 800;
+    font-size: .9rem;
+}
+
+.printer-picker-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    border: 0;
+    border-radius: 999px;
+    padding: .55rem .75rem;
+    color: var(--ui-text);
+    background: color-mix(in srgb, var(--ui-surface-solid) 82%, var(--ui-primary) 18%);
+    font-weight: 900;
+    line-height: 1;
+}
+
+.printer-picker-chip b {
+    font-size: 1.15rem;
+    line-height: 1;
+    font-weight: 900;
+}
+
+.printer-picker-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .65rem;
+    align-items: center;
+}
+
+.printer-picker-search {
+    min-height: 48px;
+}
+
+.printer-picker-dropdown {
+    display: none;
+    position: absolute;
+    z-index: 2500;
+    left: .85rem;
+    right: .85rem;
+    top: calc(100% - .45rem);
+    max-height: 340px;
+    overflow-y: auto;
+    border: 1px solid var(--ui-border);
+    border-radius: 18px;
+    background: var(--ui-surface-solid);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, .22);
+    padding: .5rem;
+}
+
+.printer-multi-picker.is-open .printer-picker-dropdown {
+    display: grid;
+    gap: .35rem;
+}
+
+.printer-picker-option {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--ui-text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .72rem .85rem;
+    border-radius: 14px;
+    text-align: left;
+    font-weight: 850;
+}
+
+.printer-picker-option:hover,
+.printer-picker-option:focus {
+    background: color-mix(in srgb, var(--ui-surface-solid) 84%, var(--ui-primary) 16%);
+}
+
+.printer-picker-option strong {
+    font-size: 1.25rem;
+    color: var(--ui-primary);
+}
+
+.printer-picker-option.is-empty {
+    color: var(--ui-muted);
+    pointer-events: none;
+}
+
+.history-table th,
+.history-table td {
+    white-space: normal !important;
+}
+
+@media (max-width: 768px) {
+    .printer-picker-input-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* =========================================================
+   V3.1 FIX - toner/printer select, zarezi u nazivima, tablica i modal
+   ========================================================= */
+.printer-multi-picker {
+    overflow: visible !important;
+}
+
+.printer-picker-dropdown {
+    z-index: 9999 !important;
+}
+
+.printer-picker-option,
+.printer-picker-chip,
+.compatible-printer-chip {
+    cursor: pointer;
+}
+
+.table.consumables-table.consumables-table-v2 {
+    min-width: 1540px !important;
+    table-layout: fixed !important;
+}
+
+.consumables-table.consumables-table-v2 thead th,
+.consumables-table.consumables-table-v2 tbody td {
+    vertical-align: middle !important;
+}
+
+.consumables-table.consumables-table-v2 thead th:nth-child(1),
+.consumables-table.consumables-table-v2 tbody td:nth-child(1) {
+    width: 270px !important;
+    min-width: 270px !important;
+    max-width: 270px !important;
+}
+
+.consumables-table.consumables-table-v2 thead th:nth-child(2),
+.consumables-table.consumables-table-v2 tbody td:nth-child(2) {
+    width: 210px !important;
+    min-width: 210px !important;
+    max-width: 210px !important;
+}
+
+.consumables-table.consumables-table-v2 thead th:nth-child(3),
+.consumables-table.consumables-table-v2 tbody td:nth-child(3) {
+    width: 150px !important;
+    min-width: 150px !important;
+    max-width: 150px !important;
+}
+
+.consumables-table.consumables-table-v2 thead th:nth-child(4),
+.consumables-table.consumables-table-v2 tbody td:nth-child(4) {
+    width: 95px !important;
+    min-width: 95px !important;
+    max-width: 95px !important;
+}
+
+.consumables-table.consumables-table-v2 thead th:nth-child(5),
+.consumables-table.consumables-table-v2 tbody td:nth-child(5) {
+    width: 130px !important;
+    min-width: 130px !important;
+    max-width: 130px !important;
+}
+
+.consumables-table.consumables-table-v2 thead th:nth-child(6),
+.consumables-table.consumables-table-v2 tbody td:nth-child(6),
+.consumables-table.consumables-table-v2 thead th:nth-child(7),
+.consumables-table.consumables-table-v2 tbody td:nth-child(7) {
+    width: 112px !important;
+    min-width: 112px !important;
+    max-width: 112px !important;
+    text-align: center !important;
+}
+
+.consumables-table.consumables-table-v2 thead th:nth-child(8),
+.consumables-table.consumables-table-v2 tbody td:nth-child(8) {
+    width: 150px !important;
+    min-width: 150px !important;
+    max-width: 150px !important;
+    text-align: center !important;
+    overflow: visible !important;
+}
+
+.consumables-table.consumables-table-v2 thead th:nth-child(9),
+.consumables-table.consumables-table-v2 tbody td:nth-child(9) {
+    width: 410px !important;
+    min-width: 410px !important;
+    max-width: 410px !important;
+    overflow: visible !important;
+    text-align: right !important;
+}
+
+.consumables-table-v2 .status-badge {
+    min-width: 96px !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+}
+
+.consumables-table-v2 .consumable-actions {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: .5rem !important;
+}
+
+.consumables-table-v2 .consumable-actions .btn {
+    min-width: 62px !important;
+    padding: .52rem .72rem !important;
+    font-size: .82rem !important;
+    line-height: 1.1 !important;
+}
+
+.consumables-table-v2 .consumable-actions form {
+    margin: 0 !important;
+}
+
+.consumables-table-v2 .quantity-big {
+    display: inline-flex !important;
+    min-width: 34px !important;
+    justify-content: center !important;
+}
+
+#useModal .modal-footer {
+    gap: .7rem !important;
+    flex-wrap: nowrap !important;
+}
+
+#useModal .modal-footer .btn {
+    width: auto !important;
+    min-width: 130px !important;
+}
+
+@media (max-width: 768px) {
+    .table.consumables-table.consumables-table-v2 {
+        min-width: 0 !important;
+    }
+
+    .consumables-table-v2 .consumable-actions {
+        flex-wrap: wrap !important;
+        justify-content: flex-start !important;
+    }
+
+    .consumables-table-v2 .consumable-actions .btn {
+        min-width: 96px !important;
+    }
+
+    #useModal .modal-footer {
+        flex-wrap: wrap !important;
+    }
+}

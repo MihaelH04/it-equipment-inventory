@@ -1,0 +1,198 @@
+@model ITEquipmentInventory.ViewModels.DocumentGenerateViewModel
+@using ITEquipmentInventory.Models
+
+@{
+    ViewData["Title"] = "Zaduženje";
+    var eq = Model.Equipment!;
+    bool isPc = eq.EquipmentType == EquipmentType.PC || eq.EquipmentType == EquipmentType.Laptop;
+    bool isMonitor = eq.EquipmentType == EquipmentType.Monitor;
+    bool isTablet = eq.EquipmentType == EquipmentType.Tablet;
+    bool isMobitel = eq.EquipmentType == EquipmentType.Mobitel;
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h1 class="mb-0">Zaduženje</h1>
+        <a asp-controller="Equipment" asp-action="Index" class="btn btn-secondary">Natrag</a>
+    </div>
+
+    <div class="card mb-4 shadow-sm border-0 rounded-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Automatski povučeni podaci</h5>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <p class="mb-2"><strong>Inventurni broj:</strong> @eq.InventoryNumber</p>
+                    <p class="mb-2"><strong>Naziv / model:</strong> @eq.Name</p>
+                    <p class="mb-2"><strong>Serijski broj:</strong> @eq.SerialNumber</p>
+                    <p class="mb-2"><strong>Vrsta:</strong> @eq.EquipmentType</p>
+                </div>
+
+                <div class="col-md-6">
+                    <p class="mb-2"><strong>Radnik:</strong> @(eq.CurrentEmployee?.FullName ?? "-")</p>
+                    <p class="mb-2"><strong>Radni nalog:</strong> @(eq.CurrentSite?.Name ?? "-")</p>
+                    <p class="mb-2"><strong>Datum zaduženja:</strong> @(eq.AssignedAt?.ToString("dd.MM.yyyy. HH:mm") ?? "-")</p>
+                    <p class="mb-2"><strong>Predao:</strong> @(eq.HandedOverBy ?? "-")</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form asp-action="GeneratePdf" method="post" novalidate>
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="EquipmentId" />
+
+     
+
+        <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-body">
+                <h5 class="mb-3">Podaci za dokument</h5>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label asp-for="PredaoInformatica" class="form-label"></label>
+                        <select asp-for="PredaoInformatica"
+                                class="form-select"
+                                asp-items="ViewBag.HandedOverByOptions">
+                        </select>
+                        <span asp-validation-for="PredaoInformatica" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="DatumZaduzenja" class="form-label"></label>
+                        <input asp-for="DatumZaduzenja"
+                               type="datetime-local"
+                               class="form-control"
+                               value="@(Model.DatumZaduzenja.HasValue ? Model.DatumZaduzenja.Value.ToString("yyyy-MM-ddTHH:mm") : "")" />
+                        <span asp-validation-for="DatumZaduzenja" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="PrimioImePrezime" class="form-label"></label>
+                        <input asp-for="PrimioImePrezime" class="form-control" />
+                        <span asp-validation-for="PrimioImePrezime" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="NazivRadnogMjesta" class="form-label"></label>
+                        <input asp-for="NazivRadnogMjesta" class="form-control" />
+                        <span asp-validation-for="NazivRadnogMjesta" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="NazivMjestaTroska" class="form-label"></label>
+                        <input asp-for="NazivMjestaTroska" class="form-control" />
+                        <span asp-validation-for="NazivMjestaTroska" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                @if (isPc)
+                {
+                    <hr class="my-4" />
+                    <h5>Ručno za PC / Laptop</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="BrojOsnovnogSredstva" class="form-label"></label>
+                            <input asp-for="BrojOsnovnogSredstva" class="form-control" />
+                            <span asp-validation-for="BrojOsnovnogSredstva" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="PrinterIliDr" class="form-label"></label>
+                            <input asp-for="PrinterIliDr" class="form-control" />
+                            <span asp-validation-for="PrinterIliDr" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label asp-for="MicrosoftWindows" class="form-label"></label>
+                            <input asp-for="MicrosoftWindows" class="form-control" />
+                            <span asp-validation-for="MicrosoftWindows" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label asp-for="MicrosoftOffice" class="form-label"></label>
+                            <input asp-for="MicrosoftOffice" class="form-control" />
+                            <span asp-validation-for="MicrosoftOffice" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label asp-for="AntivirusniProgram" class="form-label"></label>
+                            <input asp-for="AntivirusniProgram" class="form-control" />
+                            <span asp-validation-for="AntivirusniProgram" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label asp-for="OstaliProgrami" class="form-label"></label>
+                            <input asp-for="OstaliProgrami" class="form-control" />
+                            <span asp-validation-for="OstaliProgrami" class="text-danger small"></span>
+                        </div>
+                    </div>
+                }
+
+                @if (isMonitor)
+                {
+                    <hr class="my-4" />
+                    <h5>Ručno za monitor</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="BrojOsnovnogSredstva" class="form-label"></label>
+                            <input asp-for="BrojOsnovnogSredstva" class="form-control" />
+                            <span asp-validation-for="BrojOsnovnogSredstva" class="text-danger small"></span>
+                        </div>
+                    </div>
+                }
+
+                @if (isTablet)
+                {
+                    <hr class="my-4" />
+                    <h5>Ručno za tablet</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="BrojOsnovnogSredstva" class="form-label"></label>
+                            <input asp-for="BrojOsnovnogSredstva" class="form-control" />
+                            <span asp-validation-for="BrojOsnovnogSredstva" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="DodatnaOprema" class="form-label"></label>
+                            <input asp-for="DodatnaOprema" class="form-control" />
+                            <span asp-validation-for="DodatnaOprema" class="text-danger small"></span>
+                        </div>
+                    </div>
+                }
+
+                @if (isMobitel)
+                {
+                    <hr class="my-4" />
+                    <h5>Ručno za mobitel</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Imei" class="form-label"></label>
+                            <input asp-for="Imei" class="form-control" />
+                            <span asp-validation-for="Imei" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="TarifaIBrojMob" class="form-label"></label>
+                            <input asp-for="TarifaIBrojMob" class="form-control" />
+                            <span asp-validation-for="TarifaIBrojMob" class="text-danger small"></span>
+                        </div>
+                    </div>
+                }
+
+                <div class="mt-4 d-flex gap-2 flex-wrap">
+                    <button type="submit" class="btn btn-success btn-lg">Generiraj PDF</button>
+                    <a asp-controller="Equipment" asp-action="Index" class="btn btn-outline-secondary btn-lg">Odustani</a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

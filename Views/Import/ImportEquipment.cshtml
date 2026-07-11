@@ -1,0 +1,56 @@
+@{
+    ViewData["Title"] = "Uvoz opreme";
+}
+
+<div class="container mt-4">
+    <h1>Uvoz opreme iz Excel datoteke</h1>
+    <p class="text-muted">Odaberi .xlsx datoteku i klikni na Uvezi.</p>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["Success"]
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">
+            @TempData["Error"]
+        </div>
+    }
+
+    @if (TempData["Greske"] != null)
+    {
+        <div class="alert alert-warning">
+            @TempData["Greske"]
+        </div>
+    }
+
+    <form asp-controller="Import" asp-action="ImportEquipment" method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+
+        <div class="mb-3">
+            <label for="file" class="form-label">Excel datoteka (.xlsx)</label>
+            <input type="file" name="file" id="file" class="form-control" accept=".xlsx" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Uvezi opremu</button>
+        <a asp-controller="Equipment" asp-action="Index" class="btn btn-secondary">Natrag na opremu</a>
+    </form>
+
+    <hr class="my-4" />
+
+    <h5>Format Excel stupaca</h5>
+    <ul>
+        <li>Inventurni broj</li>
+        <li>Serijski broj</li>
+        <li>Vrsta</li>
+        <li>Naziv</li>
+        <li>Status</li>
+        <li>Radni nalog</li>
+        <li>Radnik</li>
+        <li>Datum zaduženja</li>
+        <li>Predao</li>
+    </ul>
+</div>

@@ -1,0 +1,165 @@
+@model IEnumerable<ITEquipmentInventory.Models.Employee>
+
+@{
+    string currentSortBy = ViewBag.SortBy as string ?? "sifra";
+    string currentSortDir = ViewBag.SortDir as string ?? "asc";
+    string currentSearch = ViewBag.SearchString as string ?? "";
+    string currentStatusFilter = ViewBag.StatusFilter as string ?? "";
+    string currentSiteFilter = ViewBag.SiteFilter as string ?? "";
+
+    string SortIcon(string column)
+    {
+        if (currentSortBy == column)
+            return currentSortDir == "asc" ? "▲" : "▼";
+
+        return "↕";
+    }
+
+    string NextSortDir(string column)
+    {
+        if (currentSortBy == column)
+            return currentSortDir == "asc" ? "desc" : "asc";
+
+        return "asc";
+    }
+}
+
+<form method="post" id="employeesBulkForm">
+    @Html.AntiForgeryToken()
+
+    <div class="bulk-toolbar">
+        <div class="bulk-toolbar-left">
+            <button type="submit" formaction="@Url.Action("BulkEdit", "Employees")" class="btn btn-primary"
+                    onclick="return validateEmployeesBulkEdit(this.form);">
+                Izmijeni odabrano
+            </button>
+
+            <button type="submit" formaction="@Url.Action("DeleteSelected", "Employees")" class="btn btn-danger"
+                    onclick="return validateEmployeesBulkDelete(this.form);">
+                Obriši odabrano
+            </button>
+        </div>
+
+        <div class="selection-counter" id="employeesSelectionCounter">Selektirano: 0</div>
+    </div>
+
+    <div class="modern-table-wrap">
+        <div class="table-responsive">
+            <table class="table modern-table app-data-table employees-table align-middle">
+                <thead>
+                    <tr>
+                        <th style="width:42px;">
+                            <input type="checkbox" id="selectAllEmployees" />
+                        </th>
+
+                        <th>
+                            <a href="@Url.Action("IndexTable", "Employees", new { searchString = currentSearch, statusFilter = currentStatusFilter, siteFilter = currentSiteFilter, sortBy = "sifra", sortDir = NextSortDir("sifra") })"
+                               class="ajax-sort-link">
+                                Šifra radnika
+                                <span>@SortIcon("sifra")</span>
+                            </a>
+                        </th>
+
+                        <th>
+                            <a href="@Url.Action("IndexTable", "Employees", new { searchString = currentSearch, statusFilter = currentStatusFilter, siteFilter = currentSiteFilter, sortBy = "ime", sortDir = NextSortDir("ime") })"
+                               class="ajax-sort-link">
+                                Ime i prezime
+                                <span>@SortIcon("ime")</span>
+                            </a>
+                        </th>
+
+                        <th>
+                            <a href="@Url.Action("IndexTable", "Employees", new { searchString = currentSearch, statusFilter = currentStatusFilter, siteFilter = currentSiteFilter, sortBy = "nalog", sortDir = NextSortDir("nalog") })"
+                               class="ajax-sort-link">
+                                Radni nalog
+                                <span>@SortIcon("nalog")</span>
+                            </a>
+                        </th>
+
+                        <th>
+                            <a href="@Url.Action("IndexTable", "Employees", new { searchString = currentSearch, statusFilter = currentStatusFilter, siteFilter = currentSiteFilter, sortBy = "status", sortDir = NextSortDir("status") })"
+                               class="ajax-sort-link">
+                                Status
+                                <span>@SortIcon("status")</span>
+                            </a>
+                        </th>
+
+                        <th>Akcije</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @if (Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr class="row-selector">
+                                <td>
+                                    <input type="checkbox" name="selectedIds" value="@item.Id"
+                                           class="row-checkbox hidden-row-checkbox" />
+                                </td>
+
+                                <td class="inventory-text">@item.WorkerCode</td>
+                                <td>@item.FullName</td>
+                                <td>@(item.Site?.Name ?? "-")</td>
+                                <td>
+                                    @if (item.Status == ITEquipmentInventory.Models.EmployeeStatus.Aktivan)
+                                    {
+                                        <span class="status-badge status-success">Aktivan</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="status-badge status-danger">Neaktivan</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1 flex-wrap">
+                                        <a asp-action="Edit" asp-route-id="@item.Id"
+                                           class="btn btn-warning btn-soft action-link">
+                                            Edit
+                                        </a>
+
+                                        <a asp-action="Delete" asp-route-id="@item.Id"
+                                           class="btn btn-danger btn-soft action-link">
+                                            Obriši
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6">
+                                <div class="empty-state-modern">
+                                    Nema zaposlenika za odabrane filtere.
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+
+<script>
+    function validateEmployeesBulkEdit(form) {
+        const checked = form.querySelectorAll('input[name="selectedIds"]:checked');
+        if (checked.length === 0) {
+            alert('Odaberi barem jednog zaposlenika za grupno uređivanje.');
+            return false;
+        }
+        return true;
+    }
+
+    function validateEmployeesBulkDelete(form) {
+        const checked = form.querySelectorAll('input[name="selectedIds"]:checked');
+        if (checked.length === 0) {
+            alert('Odaberi barem jednog zaposlenika za brisanje.');
+            return false;
+        }
+        return true;
+    }
+</script>

@@ -1,0 +1,364 @@
+@model IEnumerable<ITEquipmentInventory.Models.Equipment>
+
+@{
+    ViewData["Title"] = "Oprema";
+}
+
+<div class="container-fluid py-4 admin-shell equipment-page">
+    <div class="admin-page-header equipment-page-header">
+        <div class="equipment-page-header-row mb-4">
+            <div class="equipment-page-title-wrap">
+                <h1 class="mb-1">Oprema/Zaduženja</h1>
+                <p class="equipment-page-subtitle mb-0">Pregled, pretraga i upravljanje svom opremom na jednom mjestu.</p>
+            </div>
+
+            <div class="equipment-page-actions">
+                <a asp-controller="Import" asp-action="ImportEquipment" class="btn btn-success equipment-header-btn">
+                    Uvoz opreme/ Zaduženja
+                </a>
+                <a asp-controller="EquipmentReturn" asp-action="Index" class="btn btn-return-main equipment-header-btn">
+                    Razduženja
+                </a>
+
+                <a asp-controller="Equipment" asp-action="ExportExcel"
+                   class="btn btn-outline-success app-export-excel equipment-header-btn"
+                   data-export-form="equipmentFilterForm"
+                   data-export-base-url="@Url.Action("ExportExcel", "Equipment")">
+                    Izvoz Excel
+                </a>
+
+                <a asp-controller="Equipment" asp-action="Create" class="btn btn-primary equipment-header-btn" data-add-new>
+                    Dodaj opremu/ Zaduženje
+                </a>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success border-0 shadow-sm rounded-4 mb-4">@TempData["Success"]</div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-4">@TempData["Error"]</div>
+    }
+
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-label">Ukupno stavki</div>
+                    <div class="stat-number">@ViewBag.TotalCount</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-label">Dostupno</div>
+                    <div class="stat-number text-success">@ViewBag.AvailableCount</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-label">Zaduženo</div>
+                    <div class="stat-number text-warning">@ViewBag.AssignedCount</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-label">Servis / Otpisano</div>
+                    <div class="stat-number text-danger">@((int)ViewBag.ServiceCount + (int)ViewBag.WrittenOffCount)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card soft-card mb-4">
+        <div class="card-body">
+            <div class="filter-title">Filteri i pretraga</div>
+
+            <form id="equipmentFilterForm" class="row g-3">
+                <div class="col-lg-6 autocomplete-search-wrap">
+                    <input type="text"
+                           id="equipmentMainSearch"
+                           name="searchString"
+                           value="@(ViewBag.SearchString ?? "")"
+                           class="form-control modern-input"
+                           placeholder="Pretraži po inventurnom broju, serijskom, nazivu, radniku ili radnom nalogu..."
+                           autocomplete="off"
+                           data-main-search="true" />
+                    <div id="equipmentMainSearchSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <select name="statusFilter" class="form-select modern-select">
+                        <option value="">Svi statusi</option>
+                        <option value="Dostupno" selected="@(ViewBag.CurrentStatusFilter == "Dostupno")">Dostupno
+                        </option>
+                        <option value="Zaduzeno" selected="@(ViewBag.CurrentStatusFilter == "Zaduzeno")">Zaduženo
+                        </option>
+                        <option value="Servis" selected="@(ViewBag.CurrentStatusFilter == "Servis")">Servis</option>
+                        <option value="Otpisano" selected="@(ViewBag.CurrentStatusFilter == "Otpisano")">Otpisano
+                        </option>
+                    </select>
+                </div>
+
+                <div class="col-lg-3 col-md-6 d-flex gap-2">
+                    <button type="submit" class="btn btn-dark w-100 rounded-4 fw-bold">Primijeni</button>
+                    <button type="button" id="resetFiltersBtn"
+                            class="btn btn-outline-secondary w-100 rounded-4 fw-bold">Reset</button>
+                </div>
+
+                <input type="hidden" name="sortOrder" id="sortOrderInput" value="@(ViewBag.CurrentSort ?? "")" />
+            </form>
+        </div>
+    </div>
+
+    <div class="equipment-table-note" aria-hidden="true">
+        Na manjim ekranima manje važni podaci prikazuju se unutar stupca Naziv. Na mobitelu se svaki red pretvara u karticu.
+    </div>
+
+    <div id="equipmentTableHost" class="table-host equipment-table-host">
+        @await Html.PartialAsync("_EquipmentTable", Model)
+    </div>
+</div>
+
+<div class="modal fade modal-modern" id="bulkDeleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold mb-1">Potvrda brisanja</h5>
+                    <div class="text-muted small">Masovno brisanje odabranih stavki</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zatvori"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0" id="bulkDeleteMessage">Jeste li sigurni da želite obrisati odabrane stavke?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light rounded-4 px-4" data-bs-dismiss="modal">Odustani</button>
+                <button type="button" id="confirmBulkDeleteBtn" class="btn btn-danger rounded-4 px-4">Obriši</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let pendingDeleteForm = null;
+
+    async function loadEquipmentTable() {
+        const host = document.getElementById('equipmentTableHost');
+        const form = document.getElementById('equipmentFilterForm');
+        const params = new URLSearchParams(new FormData(form));
+
+        host.classList.add('loading');
+
+        try {
+            const response = await fetch('@Url.Action("IndexTable", "Equipment")?' + params.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const html = await response.text();
+            host.innerHTML = html;
+            wireDynamicTableUi();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            host.classList.remove('loading');
+        }
+    }
+
+    function wireDynamicTableUi() {
+        setupEquipmentRowSelection();
+        setupEquipmentSortLinks();
+        setupBulkDeleteModal();
+        setupBulkReturn();
+        window.setupExportLinksFromForms();
+    }
+
+    function setupEquipmentSortLinks() {
+        document.querySelectorAll('.ajax-sort-link').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                const url = new URL(this.href);
+                const sortOrder = url.searchParams.get('sortOrder') ?? '';
+                document.getElementById('sortOrderInput').value = sortOrder;
+                loadEquipmentTable();
+            });
+        });
+    }
+
+    function setupEquipmentRowSelection() {
+        const selectAll = document.getElementById('selectAllEquipment');
+        const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+        const rows = document.querySelectorAll('.row-selector');
+        const selectionCounter = document.getElementById('selectionCounter');
+
+        rows.forEach(row => {
+            const checkbox = row.querySelector('.row-checkbox');
+            syncRowStyle(row, checkbox);
+
+            row.addEventListener('click', function (e) {
+                if (
+                    e.target.closest('.action-link') ||
+                    e.target.closest('a') ||
+                    e.target.closest('button') ||
+                    e.target.closest('select') ||
+                    e.target.closest('label')
+                ) {
+                    return;
+                }
+
+                checkbox.checked = !checkbox.checked;
+                syncRowStyle(row, checkbox);
+                syncSelectAll(selectAll);
+                updateSelectionCounter(selectionCounter);
+            });
+
+            checkbox.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+
+            checkbox.addEventListener('change', function () {
+                syncRowStyle(row, checkbox);
+                syncSelectAll(selectAll);
+                updateSelectionCounter(selectionCounter);
+            });
+        });
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                rowCheckboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                    syncRowStyle(cb.closest('tr'), cb);
+                });
+                updateSelectionCounter(selectionCounter);
+            });
+        }
+
+        updateSelectionCounter(selectionCounter);
+    }
+
+    function setupBulkDeleteModal() {
+        const form = document.getElementById('equipmentBulkForm');
+        const bulkDeleteButton = document.getElementById('bulkDeleteBtn');
+        const confirmDeleteButton = document.getElementById('confirmBulkDeleteBtn');
+        const modalElement = document.getElementById('bulkDeleteConfirmModal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+
+        if (bulkDeleteButton) {
+            bulkDeleteButton.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                const checked = form.querySelectorAll('input[name="selectedIds"]:checked');
+                if (checked.length === 0) {
+                    alert('Odaberi barem jednu stavku opreme.');
+                    return;
+                }
+
+                document.getElementById('bulkDeleteMessage').textContent =
+                    `Jeste li sigurni da želite obrisati ${checked.length} odabrane stavke?`;
+
+                pendingDeleteForm = form;
+                modal.show();
+            });
+        }
+
+        if (confirmDeleteButton) {
+            confirmDeleteButton.onclick = function () {
+                if (pendingDeleteForm) {
+                    pendingDeleteForm.action = '@Url.Action("DeleteSelected", "Equipment")';
+                    pendingDeleteForm.submit();
+                }
+            };
+        }
+    }
+
+function setupBulkReturn() {
+    const form = document.getElementById('equipmentBulkForm');
+    const bulkReturnButton = document.getElementById('bulkReturnBtn');
+
+    if (!form || !bulkReturnButton) return;
+
+    bulkReturnButton.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        const checked = form.querySelectorAll('input[name="selectedIds"]:checked');
+
+        if (checked.length === 0) {
+            alert('Odaberi barem jednu stavku za razduživanje.');
+            return;
+        }
+
+        form.action = '@Url.Action("BulkReturn", "Equipment")';
+        form.submit();
+    });
+}
+
+
+    function syncRowStyle(row, checkbox) {
+        if (!row || !checkbox) return;
+        row.classList.toggle('selected-row', checkbox.checked);
+    }
+
+    function syncSelectAll(selectAll) {
+        if (!selectAll) return;
+
+        const all = document.querySelectorAll('.row-checkbox');
+        const checked = document.querySelectorAll('.row-checkbox:checked');
+        selectAll.checked = all.length > 0 && all.length === checked.length;
+    }
+
+    function updateSelectionCounter(counter) {
+        if (!counter) return;
+        const checked = document.querySelectorAll('.row-checkbox:checked').length;
+        counter.textContent = `Selektirano: ${checked}`;
+    }
+
+    document.getElementById('equipmentFilterForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        loadEquipmentTable();
+    });
+
+    document.getElementById('resetFiltersBtn').addEventListener('click', function () {
+        const form = document.getElementById('equipmentFilterForm');
+        form.reset();
+        document.getElementById('sortOrderInput').value = '';
+        loadEquipmentTable();
+    });
+
+  setupRemoteEntityAutocomplete(
+    'equipmentMainSearch',
+    null,
+    'equipmentMainSearchSuggestions',
+    '@Url.Action("SearchEquipmentSuggestions", "Equipment")',
+    {
+        hideDelayMs: 1500,
+        autoHighlightFirst: false,
+        enterSelects: false,
+        tabSelects: true,
+        onSelect: function () {
+            document.getElementById('sortOrderInput').value = '';
+            loadEquipmentTable();
+        }
+    }
+);
+
+    wireDynamicTableUi();
+</script>
+}

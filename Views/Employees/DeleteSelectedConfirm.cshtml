@@ -1,0 +1,65 @@
+@model IEnumerable<ITEquipmentInventory.Models.Employee>
+
+@{
+    ViewData["Title"] = "Potvrda brisanja odabranih zaposlenika";
+}
+
+<div class="container py-4">
+    <div class="mb-4">
+        <h1 class="fw-bold mb-2">Potvrda brisanja odabranih zaposlenika</h1>
+        <p class="text-muted mb-0">
+            Provjeri popis zaposlenika prije trajnog brisanja.
+        </p>
+    </div>
+
+    <div class="alert alert-warning rounded-4 border-0 shadow-sm">
+        <strong>Pažnja:</strong> Obrisat će se ukupno <strong>@Model.Count()</strong> zaposlenika.
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Šifra radnika</th>
+                            <th>Ime i prezime</th>
+                            <th>Status</th>
+                            <th>Radni nalog</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var employee in Model)
+                        {
+                            <tr>
+                                <td>@employee.WorkerCode</td>
+                                <td>@employee.FullName</td>
+                                <td>@employee.Status</td>
+                                <td>@(employee.Site?.Name ?? "-")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <form asp-action="DeleteSelectedConfirmed" method="post">
+        @Html.AntiForgeryToken()
+
+        @foreach (var employee in Model)
+        {
+            <input type="hidden" name="selectedIds" value="@employee.Id" />
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger rounded-4 px-4">
+                Da, obriši odabrane zaposlenike
+            </button>
+
+            <a asp-action="Index" class="btn btn-outline-secondary rounded-4 px-4">
+                Odustani
+            </a>
+        </div>
+    </form>
+</div>

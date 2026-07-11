@@ -1,0 +1,208 @@
+@model IEnumerable<ITEquipmentInventory.Models.Site>
+
+@{
+    ViewData["Title"] = "Radni nalozi";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-3">
+        <div>
+            <h1 class="mb-1">Radni nalozi</h1>
+            <p class="text-muted mb-0">Pregled radnih naloga s grupnim uređivanjem i brisanjem.</p>
+        </div>
+
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <div class="stat-card bg-secondary text-white">
+                <div class="stat-broj">@ViewBag.Ukupno</div>
+                <div class="stat-label">UKUPNO</div>
+            </div>
+            <div class="stat-card bg-success text-white">
+                <div class="stat-broj">@ViewBag.Aktivno</div>
+                <div class="stat-label">AKTIVNO</div>
+            </div>
+            <div class="stat-card bg-danger text-white">
+                <div class="stat-broj">@ViewBag.Neaktivno</div>
+                <div class="stat-label">NEAKTIVNO</div>
+            </div>
+            <a asp-action="ExportExcel"
+               class="btn btn-outline-success app-export-excel"
+               data-export-form="sitesFiltersForm"
+               data-export-base-url="@Url.Action("ExportExcel", "Sites")">
+                Izvoz Excel
+            </a>
+            <a asp-action="Create" class="btn btn-primary" data-add-new>Dodaj radni nalog</a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <form id="sitesFiltersForm" method="get" asp-action="Index" class="row g-2 mb-3">
+        <input type="hidden" name="sortBy" id="sortByInput" value="@ViewBag.SortBy" />
+        <input type="hidden" name="sortDir" id="sortDirInput" value="@ViewBag.SortDir" />
+
+        <div class="col-md-6 autocomplete-search-wrap">
+            <input type="text"
+                   id="sitesMainSearch"
+                   name="searchString"
+                   value="@ViewBag.SearchString"
+                   class="form-control modern-input"
+                   placeholder="Pretraži po nazivu, šifri, lokaciji ili statusu aktivno/neaktivno..."
+                   autocomplete="off"
+                   data-main-search="true" />
+            <div id="sitesMainSearchSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+        </div>
+
+        <div class="col-md-2">
+            <select name="statusFilter" id="statusFilterSelect" class="form-select">
+                <option value="" selected="@(string.IsNullOrEmpty(ViewBag.StatusFilter as string))">Svi statusi</option>
+                <option value="Aktivno" selected="@(ViewBag.StatusFilter == "Aktivno")">Aktivno</option>
+                <option value="Neaktivno" selected="@(ViewBag.StatusFilter == "Neaktivno")">Neaktivno</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-secondary w-100">Pretraži</button>
+        </div>
+
+        <div class="col-md-2">
+            <button type="button" id="resetSitesFiltersBtn" class="btn btn-outline-dark w-100">Reset</button>
+        </div>
+    </form>
+
+    <div id="sitesTableContainer">
+        @await Html.PartialAsync("_SitesTable", Model)
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        wireSitesTableUi();
+
+        const filtersForm = document.getElementById('sitesFiltersForm');
+
+        if (filtersForm) {
+            filtersForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                refreshSitesTableFromForm();
+            });
+
+            document.getElementById('statusFilterSelect')
+                .addEventListener('change', refreshSitesTableFromForm);
+        }
+
+        document.getElementById('resetSitesFiltersBtn').addEventListener('click', function () {
+            filtersForm.reset();
+            document.getElementById('sortByInput').value = 'naziv';
+            document.getElementById('sortDirInput').value = 'asc';
+            refreshSitesTableFromForm();
+        });
+
+ setupRemoteEntityAutocomplete(
+    'sitesMainSearch',
+    null,
+    'sitesMainSearchSuggestions',
+    '@Url.Action("SearchSiteSuggestions", "Sites")',
+    {
+        hideDelayMs: 1000,
+        autoHighlightFirst: false,
+        enterSelects: false,
+        tabSelects: true,
+        onSelect: function () {
+            document.getElementById('sortByInput').value = 'naziv';
+            document.getElementById('sortDirInput').value = 'asc';
+            refreshSitesTableFromForm();
+        }
+    }
+);
+
+        window.setupExportLinksFromForms();
+    });
+
+    function refreshSitesTableFromForm() {
+        const form = document.getElementById('sitesFiltersForm');
+        const params = new URLSearchParams(new FormData(form));
+        loadSitesTable(`/Sites/IndexTable?${params.toString()}`);
+        window.setupExportLinksFromForms();
+    }
+
+    function loadSitesTable(url) {
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.text())
+            .then(html => {
+                document.getElementById('sitesTableContainer').innerHTML = html;
+                wireSitesTableUi();
+            });
+    }
+
+    function wireSitesTableUi() {
+        document.querySelectorAll('#sitesTableContainer .ajax-sort-link').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                const url = new URL(this.href, window.location.origin);
+                document.getElementById('sortByInput').value = url.searchParams.get('sortBy') ?? 'naziv';
+                document.getElementById('sortDirInput').value = url.searchParams.get('sortDir') ?? 'asc';
+
+                refreshSitesTableFromForm();
+            });
+        });
+
+        setupSitesRowSelection();
+    }
+
+    function setupSitesRowSelection() {
+        const selectAll = document.getElementById('selectAllSites');
+        const rows = document.querySelectorAll('#sitesTableContainer .row-selector');
+
+        rows.forEach(row => {
+            const checkbox = row.querySelector('.row-checkbox');
+            if (!checkbox) return;
+
+            row.addEventListener('click', function (e) {
+                if (e.target.closest('.action-link') || e.target.closest('a') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('label')) return;
+
+                checkbox.checked = !checkbox.checked;
+                row.classList.toggle('selected-row', checkbox.checked);
+                syncSitesSelection();
+            });
+
+            checkbox.addEventListener('click', e => e.stopPropagation());
+            checkbox.addEventListener('change', () => {
+                row.classList.toggle('selected-row', checkbox.checked);
+                syncSitesSelection();
+            });
+        });
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                document.querySelectorAll('#sitesTableContainer .row-checkbox').forEach(cb => {
+                    cb.checked = this.checked;
+                    cb.closest('tr')?.classList.toggle('selected-row', cb.checked);
+                });
+                syncSitesSelection();
+            });
+        }
+
+        syncSitesSelection();
+    }
+
+    function syncSitesSelection() {
+        const all = document.querySelectorAll('#sitesTableContainer .row-checkbox');
+        const checked = document.querySelectorAll('#sitesTableContainer .row-checkbox:checked');
+        const counter = document.getElementById('sitesSelectionCounter');
+        const selectAll = document.getElementById('selectAllSites');
+
+        if (counter) counter.textContent = `Selektirano: ${checked.length}`;
+        if (selectAll) selectAll.checked = all.length > 0 && all.length === checked.length;
+    }
+</script>
+}

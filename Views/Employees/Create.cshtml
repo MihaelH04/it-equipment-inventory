@@ -1,0 +1,60 @@
+@model ITEquipmentInventory.Models.Employee
+
+@{
+    ViewData["Title"] = "Dodaj zaposlenika";
+    var selectedSiteText = ViewBag.SelectedSiteText as string ?? "";
+}
+
+<div class="container mt-4">
+    <h1>Dodaj zaposlenika</h1>
+
+    <form asp-action="Create" method="post" autocomplete="off">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+        <div class="mb-3">
+            <label asp-for="WorkerCode" class="form-label">Šifra radnika</label>
+            <input asp-for="WorkerCode" class="form-control" />
+            <span asp-validation-for="WorkerCode" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="FullName" class="form-label">Ime i prezime</label>
+            <input asp-for="FullName" class="form-control" />
+            <span asp-validation-for="FullName" class="text-danger"></span>
+        </div>
+
+        <input asp-for="SiteId" type="hidden" />
+
+        <div class="mb-3 autocomplete-search-wrap">
+            <label class="form-label">Radni nalog</label>
+            <input type="text"
+                   id="siteSearch"
+                   class="form-control"
+                   placeholder="Upiši šifru ili naziv radnog naloga..."
+                   value="@selectedSiteText"
+                   autocomplete="off" />
+            <div id="employeeSiteSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+            <span asp-validation-for="SiteId" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Status" class="form-label">Status</label>
+            <select asp-for="Status" class="form-select"
+                    asp-items="Html.GetEnumSelectList<ITEquipmentInventory.Models.EmployeeStatus>()">
+                <option value="">-- Odaberi status --</option>
+            </select>
+            <span asp-validation-for="Status" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-success">Spremi</button>
+        <a asp-action="Index" class="btn btn-secondary">Natrag</a>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        setupRemoteEntityAutocomplete('siteSearch', 'SiteId', 'employeeSiteSuggestions', '@Url.Action("SearchSites", "Equipment")', { hideDelayMs: 1000 });
+    </script>
+}

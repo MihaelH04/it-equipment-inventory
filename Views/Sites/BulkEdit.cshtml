@@ -1,0 +1,44 @@
+@model ITEquipmentInventory.Models.ViewModels.SiteBulkEditViewModel
+
+@{
+    ViewData["Title"] = "Grupno uređivanje radnih naloga";
+}
+
+<div class="container mt-4">
+    <h1 class="mb-3">Grupno uređivanje radnih naloga</h1>
+    <p class="text-muted">Odabrano radnih naloga: <strong>@Model.SelectedIds.Count</strong></p>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4">
+            <div class="alert alert-info">
+                Unesi samo ona polja koja želiš promijeniti. Prazna polja se neće mijenjati.
+            </div>
+
+            <form asp-action="BulkEditSave" method="post">
+                @Html.AntiForgeryToken()
+
+                @for (int i = 0; i < Model.SelectedIds.Count; i++)
+                {
+                    <input type="hidden" name="SelectedIds[@i]" value="@Model.SelectedIds[i]" />
+                }
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="Name" class="form-label fw-semibold">Naziv</label>
+                        <input asp-for="Name" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Code" class="form-label fw-semibold">Šifra</label>
+                        <input asp-for="Code" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Spremi promjene</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Odustani</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

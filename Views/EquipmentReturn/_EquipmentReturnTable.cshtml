@@ -1,0 +1,71 @@
+@model IEnumerable<ITEquipmentInventory.Models.EquipmentReturn>
+
+@{
+    string currentSort = ViewBag.CurrentSort as string ?? "";
+    string currentSearch = ViewBag.SearchString as string ?? "";
+
+    string SortIcon(string ascKey, string descKey)
+    {
+        if (currentSort == ascKey) return "▲";
+        if (currentSort == descKey) return "▼";
+        return "↕";
+    }
+}
+
+<div class="modern-table-wrap">
+    <div class="table-responsive">
+        <table class="table modern-table app-data-table returns-table align-middle">
+            <thead>
+                <tr>
+                    <th><a href="@Url.Action("IndexTable", "EquipmentReturn", new { searchString = currentSearch, sortOrder = ViewBag.InventorySort })" class="ajax-return-sort-link">Inventurni broj <span>@SortIcon("inventory_asc", "inventory_desc")</span></a></th>
+                    <th><a href="@Url.Action("IndexTable", "EquipmentReturn", new { searchString = currentSearch, sortOrder = ViewBag.SerialSort })" class="ajax-return-sort-link">Serijski broj <span>@SortIcon("serial_asc", "serial_desc")</span></a></th>
+                    <th><a href="@Url.Action("IndexTable", "EquipmentReturn", new { searchString = currentSearch, sortOrder = ViewBag.TypeSort })" class="ajax-return-sort-link">Vrsta <span>@SortIcon("type_asc", "type_desc")</span></a></th>
+                    <th><a href="@Url.Action("IndexTable", "EquipmentReturn", new { searchString = currentSearch, sortOrder = ViewBag.NameSort })" class="ajax-return-sort-link">Naziv <span>@SortIcon("name_asc", "name_desc")</span></a></th>
+                    <th><a href="@Url.Action("IndexTable", "EquipmentReturn", new { searchString = currentSearch, sortOrder = ViewBag.SiteSort })" class="ajax-return-sort-link">Radni nalog <span>@SortIcon("site_asc", "site_desc")</span></a></th>
+                    <th><a href="@Url.Action("IndexTable", "EquipmentReturn", new { searchString = currentSearch, sortOrder = ViewBag.EmployeeSort })" class="ajax-return-sort-link">Zaposlenik <span>@SortIcon("employee_asc", "employee_desc")</span></a></th>
+                    <th><a href="@Url.Action("IndexTable", "EquipmentReturn", new { searchString = currentSearch, sortOrder = ViewBag.AssignedAtSort })" class="ajax-return-sort-link">Datum zaduženja <span>@SortIcon("assignedat_asc", "assignedat_desc")</span></a></th>
+                    <th><a href="@Url.Action("IndexTable", "EquipmentReturn", new { searchString = currentSearch, sortOrder = ViewBag.ReturnedAtSort })" class="ajax-return-sort-link">Datum razduženja <span>@SortIcon("returnedat_asc", "returnedat_desc")</span></a></th>
+                    <th>Razdužio</th>
+                    <th>Akcije</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Any())
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.InventoryNumber</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.SerialNumber) ? "-" : item.SerialNumber)</td>
+                            <td>@item.EquipmentType</td>
+                            <td>@item.Name</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.PreviousSiteCode) && string.IsNullOrWhiteSpace(item.PreviousSiteName) ? "-" : $"{item.PreviousSiteCode} - {item.PreviousSiteName}")</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.PreviousEmployeeCode) && string.IsNullOrWhiteSpace(item.PreviousEmployeeName) ? "-" : $"{item.PreviousEmployeeCode} - {item.PreviousEmployeeName}")</td>
+                            <td>@(item.AssignedAt.HasValue ? item.AssignedAt.Value.ToString("dd.MM.yyyy") : "-")</td>
+                            <td>@item.ReturnedAt.ToString("dd.MM.yyyy")</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.HandedOverBy) ? "-" : item.HandedOverBy)</td>
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+                                    <form asp-action="Restore" asp-controller="EquipmentReturn" asp-route-id="@item.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-success btn-soft action-link" onclick="return confirm('Vrati ovo razduženje natrag u opremu?')">Vrati</button>
+                                    </form>
+                                    <a asp-action="Edit" asp-controller="EquipmentReturn" asp-route-id="@item.Id" class="btn btn-warning btn-soft action-link">Edit</a>
+                                    <a asp-action="Delete" asp-controller="EquipmentReturn" asp-route-id="@item.Id" class="btn btn-danger btn-soft action-link">Obriši</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="10">
+                            <div class="empty-state-modern">Nema evidentiranih razduženja.</div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

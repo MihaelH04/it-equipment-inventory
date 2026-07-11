@@ -1,0 +1,67 @@
+@model ITEquipmentInventory.Models.ViewModels.ProfileViewModel
+@{
+    ViewData["Title"] = "Moj profil";
+}
+<div class="container-fluid py-4 admin-shell profile-page">
+    <div class="consumables-page-header mb-4">
+        <div>
+            <span class="consumables-kicker">Korisnički račun</span>
+            <h1 class="mb-1">Moj profil</h1>
+            <p class="text-muted mb-0">Promijeni ime, korisničko ime, lozinku, profilnu sliku i datum rođenja.</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success rounded-4 border-0 shadow-sm">@TempData["Success"]</div>
+    }
+
+    <form asp-action="Profile" method="post" enctype="multipart/form-data" class="profile-card">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+        <div class="profile-avatar-panel">
+            @if (!string.IsNullOrWhiteSpace(Model.CurrentProfileImagePath))
+            {
+                <img src="@Model.CurrentProfileImagePath" alt="Profilna slika" class="profile-avatar-large" />
+            }
+            else
+            {
+                <div class="profile-avatar-large profile-avatar-placeholder">@((Model.UserName ?? "U").Substring(0, 1).ToUpper())</div>
+            }
+            <div>
+                <label asp-for="ProfileImage" class="form-label"></label>
+                <input asp-for="ProfileImage" class="form-control" accept="image/jpeg,image/png,image/webp" />
+                <span asp-validation-for="ProfileImage" class="text-danger"></span>
+                <div class="form-text">JPG, PNG ili WEBP, najviše 2 MB.</div>
+                @if (!string.IsNullOrWhiteSpace(Model.CurrentProfileImagePath))
+                {
+                    <div class="form-check mt-3">
+                        <input asp-for="RemoveProfileImage" class="form-check-input" />
+                        <label asp-for="RemoveProfileImage" class="form-check-label"></label>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="profile-form-grid">
+            <div><label asp-for="UserName" class="form-label"></label><input asp-for="UserName" class="form-control" /><span asp-validation-for="UserName" class="text-danger"></span></div>
+            <div><label asp-for="FullName" class="form-label"></label><input asp-for="FullName" class="form-control" /><span asp-validation-for="FullName" class="text-danger"></span></div>
+            <div><label asp-for="DateOfBirth" class="form-label"></label><input asp-for="DateOfBirth" type="date" class="form-control" /><span asp-validation-for="DateOfBirth" class="text-danger"></span></div>
+        </div>
+
+        <div class="profile-password-box">
+            <h2>Sigurnost</h2>
+            <p class="text-muted">Trenutna lozinka obavezna je za svako spremanje. Nova lozinka nije obavezna.</p>
+            <div class="profile-form-grid">
+                <div><label asp-for="CurrentPassword" class="form-label"></label><input asp-for="CurrentPassword" class="form-control" /><span asp-validation-for="CurrentPassword" class="text-danger"></span></div>
+                <div><label asp-for="NewPassword" class="form-label"></label><input asp-for="NewPassword" class="form-control" /><span asp-validation-for="NewPassword" class="text-danger"></span></div>
+                <div><label asp-for="ConfirmNewPassword" class="form-label"></label><input asp-for="ConfirmNewPassword" class="form-control" /><span asp-validation-for="ConfirmNewPassword" class="text-danger"></span></div>
+            </div>
+        </div>
+
+        <div class="consumable-form-actions">
+            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Odustani</a>
+            <button type="submit" class="btn btn-primary">Spremi profil</button>
+        </div>
+    </form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

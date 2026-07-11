@@ -1,0 +1,160 @@
+@model ITEquipmentInventory.Models.ViewModels.ConsumableHistoryViewModel
+@{
+    ViewData["Title"] = "Mjesečna evidencija tonera";
+    string TypeText(ConsumableTransactionType type) => type switch
+    {
+        ConsumableTransactionType.Naruceno => "Naručeno",
+        ConsumableTransactionType.Zaprimljeno => "Zaprimljeno",
+        _ => "Izdano / potrošeno"
+    };
+}
+
+<div class="container-fluid py-4 admin-shell consumables-page history-page">
+    <div class="consumables-page-header mb-4">
+        <div>
+            <span class="consumables-kicker">Mjesečna evidencija</span>
+            <h1 class="mb-1">Narudžbe i potrošnja</h1>
+            <p class="text-muted mb-0">Pregled koliko je artikala naručeno i na koje printere i radne naloge je potrošeno.</p>
+        </div>
+        <div class="consumables-header-actions">
+            <a asp-action="Index" class="btn btn-outline-secondary">← Natrag na zalihe</a>
+            <a asp-action="ExportHistoryExcel"
+               asp-route-dateFrom='@Model.DateFrom.ToString("yyyy-MM-dd")'
+               asp-route-dateTo='@Model.DateTo.ToString("yyyy-MM-dd")'
+               asp-route-searchString="@Model.SearchString"
+               asp-route-sortOrder="@Model.SortOrder"
+               class="btn btn-success">Izvoz evidencije u Excel</a>
+        </div>
+    </div>
+
+    <form method="get" asp-action="History" class="history-filter-card mb-4">
+        <div>
+            <label asp-for="DateFrom" class="form-label">Od datuma</label>
+            <input type="date" name="dateFrom" value='@Model.DateFrom.ToString("yyyy-MM-dd")' class="form-control" />
+        </div>
+        <div>
+            <label asp-for="DateTo" class="form-label">Do datuma</label>
+            <input type="date" name="dateTo" value='@Model.DateTo.ToString("yyyy-MM-dd")' class="form-control" />
+        </div>
+        <div class="history-search-field">
+            <label class="form-label">Pretraga</label>
+            <input type="search" name="searchString" value="@Model.SearchString" class="form-control"
+                   data-main-search="true" placeholder="Artikl, šifra, printer, radni nalog, korisnik ili radnja..." />
+        </div>
+        <div>
+            <label class="form-label">Sortiranje</label>
+            <select name="sortOrder" class="form-select">
+                @if (string.IsNullOrEmpty(Model.SortOrder)) { <option value="" selected>Najnovije prvo</option> } else { <option value="">Najnovije prvo</option> }
+                @if (Model.SortOrder == "date") { <option value="date" selected>Najstarije prvo</option> } else { <option value="date">Najstarije prvo</option> }
+                @if (Model.SortOrder == "item") { <option value="item" selected>Po artiklu</option> } else { <option value="item">Po artiklu</option> }
+                @if (Model.SortOrder == "printer") { <option value="printer" selected>Po printeru</option> } else { <option value="printer">Po printeru</option> }
+                @if (Model.SortOrder == "site") { <option value="site" selected>Po radnom nalogu</option> } else { <option value="site">Po radnom nalogu</option> }
+                @if (Model.SortOrder == "quantity_desc") { <option value="quantity_desc" selected>Najveća količina</option> } else { <option value="quantity_desc">Najveća količina</option> }
+            </select>
+        </div>
+        <div class="history-filter-actions">
+            <button class="btn btn-primary" type="submit">Prikaži</button>
+            <a asp-action="History" class="btn btn-outline-secondary">Ovaj mjesec</a>
+        </div>
+    </form>
+
+    <div class="history-summary-grid mb-4">
+        <section class="card history-summary-card">
+            <div class="history-summary-heading">
+                <div><span>🛒</span><strong>Naručeno po artiklu</strong></div>
+                <span class="badge text-bg-warning">@Model.OrderedSummary.Sum(x => x.Quantity) kom.</span>
+            </div>
+            @if (Model.OrderedSummary.Count == 0)
+            {
+                <div class="text-muted py-3">U odabranom razdoblju nema narudžbi.</div>
+            }
+            else
+            {
+                <div class="history-mini-list">
+                    @foreach (var row in Model.OrderedSummary)
+                    {
+                        <div>
+                            <span>
+                                <strong>@row.ItemName</strong>
+                                @if (!string.IsNullOrWhiteSpace(row.ProductCode))
+                                {
+                                    <small>@row.ProductCode</small>
+                                }
+                            </span>
+                            <b>@row.Quantity</b>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="card history-summary-card">
+            <div class="history-summary-heading">
+                <div><span>🖨</span><strong>Potrošeno po printeru i nalogu</strong></div>
+                <span class="badge text-bg-primary">@Model.UsedSummary.Sum(x => x.Quantity) kom.</span>
+            </div>
+            @if (Model.UsedSummary.Count == 0)
+            {
+                <div class="text-muted py-3">U odabranom razdoblju nema evidentirane potrošnje.</div>
+            }
+            else
+            {
+                <div class="history-mini-list">
+                    @foreach (var row in Model.UsedSummary)
+                    {
+                        <div>
+                            <span>
+                                <strong>@row.PrinterName</strong>
+                                <small>@row.SiteName • @row.ItemName @(!string.IsNullOrWhiteSpace(row.ProductCode) ? "• " + row.ProductCode : "")</small>
+                            </span>
+                            <b>@row.Quantity</b>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+
+    <div class="modern-table-wrap">
+        <div class="table-responsive">
+            <table class="table modern-table history-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Datum</th>
+                        <th>Radnja</th>
+                        <th>Artikl</th>
+                        <th>Količina</th>
+                        <th>Printer</th>
+                        <th>Radni nalog</th>
+                        <th>Korisnik</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Transactions.Count == 0)
+                {
+                    <tr><td colspan="7" class="empty-state-modern">Nema zapisa za odabrano razdoblje.</td></tr>
+                }
+                else
+                {
+                    @foreach (var item in Model.Transactions)
+                    {
+                        var badgeClass = item.TransactionType == ConsumableTransactionType.Naruceno
+                            ? "text-bg-warning"
+                            : item.TransactionType == ConsumableTransactionType.Zaprimljeno
+                                ? "text-bg-success" : "text-bg-primary";
+                        <tr>
+                            <td data-label="Datum">@item.CreatedAt.ToString("dd.MM.yyyy. HH:mm")</td>
+                            <td data-label="Radnja"><span class="badge rounded-pill @badgeClass">@TypeText(item.TransactionType)</span></td>
+                            <td data-label="Artikl"><strong>@item.ConsumableName</strong><br /><small class="text-muted">@item.ProductCode</small></td>
+                            <td data-label="Količina"><strong>@item.Quantity</strong></td>
+                            <td data-label="Printer">@(item.PrinterName ?? "—")</td>
+                            <td data-label="Radni nalog">@(item.SiteName ?? "—")</td>
+                            <td data-label="Korisnik">@(item.PerformedBy ?? "—")</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

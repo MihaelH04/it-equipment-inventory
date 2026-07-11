@@ -1,0 +1,61 @@
+@model ITEquipmentInventory.Models.ViewModels.EmployeeBulkEditViewModel
+
+@{
+    ViewData["Title"] = "Grupno uređivanje zaposlenika";
+}
+
+<div class="container mt-4">
+    <h1 class="mb-3">Grupno uređivanje zaposlenika</h1>
+    <p class="text-muted">Odabrano zaposlenika: <strong>@Model.SelectedCount</strong></p>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4">
+            <div class="alert alert-info">
+                Promijeni samo ona polja koja želiš. Prazna polja se neće mijenjati.
+            </div>
+
+            <form asp-action="BulkEditSave" method="post" autocomplete="off">
+                @Html.AntiForgeryToken()
+
+                @for (int i = 0; i < Model.SelectedIds.Count; i++)
+                {
+                    <input type="hidden" name="SelectedIds[@i]" value="@Model.SelectedIds[i]" />
+                }
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="Status" class="form-label fw-semibold">Status</label>
+                        <select asp-for="Status"
+                                class="form-select"
+                                asp-items="Html.GetEnumSelectList<ITEquipmentInventory.Models.EmployeeStatus>()">
+                            <option value="">-- ne mijenjaj --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6 autocomplete-search-wrap">
+                        <label asp-for="SiteId" class="form-label fw-semibold">Radni nalog</label>
+                        <input type="hidden" asp-for="SiteId" id="SiteId" />
+                        <input type="text"
+                               id="employeeBulkSiteSearch"
+                               class="form-control"
+                               placeholder="Upiši šifru ili naziv radnog naloga..."
+                               autocomplete="off" />
+                        <div id="employeeBulkSiteSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Spremi promjene</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Odustani</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        setupRemoteEntityAutocomplete('employeeBulkSiteSearch', 'SiteId', 'employeeBulkSiteSuggestions', '@Url.Action("SearchSites", "Equipment")', { hideDelayMs: 1000 });
+    </script>
+}

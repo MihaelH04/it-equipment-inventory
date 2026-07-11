@@ -1,0 +1,11 @@
+@{
+    ViewData["Title"] = "Nemaš pristup";
+}
+
+<div class="container mt-5" style="max-width: 720px;">
+    <div class="alert alert-danger rounded-4 shadow-sm">
+        <h1 class="h4">Nemaš pristup ovoj stranici.</h1>
+        <p class="mb-0">Za ovu akciju trebaš biti prijavljen kao admin.</p>
+    </div>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Natrag na početnu</a>
+</div>

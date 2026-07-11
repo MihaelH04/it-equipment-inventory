@@ -1,0 +1,38 @@
+@{
+    ViewData["Title"] = "Uvoz zaposlenika";
+}
+
+<div class="container mt-4">
+    <h2>Uvoz zaposlenika iz Excela</h2>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+    @if (TempData["Greske"] != null)
+    {
+        <div class="alert alert-warning">
+            <strong>Upozorenja:</strong><br />
+            @TempData["Greske"]
+        </div>
+    }
+
+    <form method="post" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+        <div class="mb-3">
+            <label class="form-label">Odaberi .xlsx datoteku</label>
+            <input type="file" name="file" accept=".xlsx" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Uvezi zaposlenike</button>
+    </form>
+
+    <hr />
+    <p class="text-muted">
+        Očekivani format: <strong>Šifra radnika | Ime i prezime | Radni nalog | Status</strong>
+        (Status: <em>Aktivan</em> ili <em>Neaktivan</em>)
+    </p>
+</div>

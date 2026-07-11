@@ -1,0 +1,122 @@
+@model ITEquipmentInventory.Models.Equipment
+
+@{
+    ViewData["Title"] = "Uredi opremu";
+}
+
+<div class="container mt-4">
+    <h1>Uredi opremu</h1>
+
+    <form asp-action="Edit" method="post" autocomplete="off">
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="InventoryNumber" class="form-label"></label>
+                <input asp-for="InventoryNumber" class="form-control" />
+                <span asp-validation-for="InventoryNumber" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="SerialNumber" class="form-label"></label>
+                <input asp-for="SerialNumber" class="form-control" />
+                <span asp-validation-for="SerialNumber" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Vrsta opreme</label>
+                <select asp-for="EquipmentType" class="form-select" asp-items="Html.GetEnumSelectList<ITEquipmentInventory.Models.EquipmentType>()"></select>
+                <span asp-validation-for="EquipmentType" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="Status" class="form-label">Status</label>
+                <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<ITEquipmentInventory.Models.EquipmentStatus>()"></select>
+                <span asp-validation-for="Status" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6 position-relative autocomplete-search-wrap">
+                <label class="form-label">Radni nalog</label>
+                <input type="hidden" asp-for="CurrentSiteId" id="CurrentSiteId" />
+                <input type="text"
+                       id="siteAutocomplete"
+                       class="form-control"
+                       placeholder="Upiši šifru ili naziv radnog naloga..."
+                       value="@ViewBag.SelectedSiteText" />
+                <div id="siteSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+                <span asp-validation-for="CurrentSiteId" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6 position-relative autocomplete-search-wrap">
+                <label class="form-label">Zaposlenik</label>
+                <input type="hidden" asp-for="CurrentEmployeeId" id="CurrentEmployeeId" />
+                <input type="text"
+                       id="employeeAutocomplete"
+                       class="form-control"
+                       placeholder="Upiši šifru, ime ili prezime radnika..."
+                       value="@ViewBag.SelectedEmployeeText" />
+                <div id="employeeSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+                <span asp-validation-for="CurrentEmployeeId" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Datum zaduženja</label>
+                <input asp-for="AssignedAt"
+                       type="date"
+                       class="form-control"
+                       value="@(Model.AssignedAt.HasValue ? Model.AssignedAt.Value.ToString("yyyy-MM-dd") : "")" />
+                <span asp-validation-for="AssignedAt" class="text-danger"></span>
+            </div>
+
+    
+
+            <div class="col-md-6">
+                <label class="form-label">Zadužio</label>
+                <select asp-for="HandedOverBy"
+                        class="form-select"
+                        asp-items="ViewBag.HandedOverByOptions">
+                </select>
+                <span asp-validation-for="HandedOverBy" class="text-danger"></span>
+                <div class="form-text">
+                    Prikazuju se samo aktivni administratori iz korisnika.
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Spremi promjene</button>
+            <a asp-action="Index" class="btn btn-secondary">Natrag</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        setupRemoteEntityAutocomplete(
+            'siteAutocomplete',
+            'CurrentSiteId',
+            'siteSuggestions',
+            '@Url.Action("SearchSites", "Equipment")',
+            { hideDelayMs: 1000 }
+        );
+
+        setupRemoteEntityAutocomplete(
+            'employeeAutocomplete',
+            'CurrentEmployeeId',
+            'employeeSuggestions',
+            '@Url.Action("SearchEmployees", "Equipment")',
+            { hideDelayMs: 1000 }
+        );
+    </script>
+}

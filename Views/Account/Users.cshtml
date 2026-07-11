@@ -1,0 +1,144 @@
+@model IEnumerable<ITEquipmentInventory.Models.AppUser>
+
+@{
+    ViewData["Title"] = "Korisnici";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-1">Korisnici</h1>
+            <div class="text-muted">Upravljanje adminima i običnim korisnicima</div>
+        </div>
+
+        <a asp-controller="Account" asp-action="Create" class="btn btn-primary rounded-4 fw-bold">
+            Dodaj korisnika
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success rounded-4 shadow-sm border-0">
+            @TempData["Success"]
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger rounded-4 shadow-sm border-0">
+            @TempData["Error"]
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 account-users-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Korisničko ime</th>
+                            <th>Ime i prezime</th>
+                            <th>Uloga</th>
+                            <th>Status</th>
+                            <th class="text-end">Akcije</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var user in Model)
+                        {
+                            var isCurrentUser = string.Equals(User.Identity?.Name, user.UserName, StringComparison.OrdinalIgnoreCase);
+                            var isAdmin = user.Role == ITEquipmentInventory.Models.AppUserRole.Admin;
+
+                            <tr>
+                                <td>
+                                    <strong>@user.UserName</strong>
+
+                                    @if (isCurrentUser)
+                                    {
+                                        <span class="badge bg-info ms-2">Ti</span>
+                                    }
+                                </td>
+
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(user.FullName))
+                                    {
+                                        @user.FullName
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+
+                                <td>
+                                    @if (isAdmin)
+                                    {
+                                        <span class="badge bg-danger">Admin</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">User</span>
+                                    }
+                                </td>
+
+                                <td>
+                                    @if (user.IsActive)
+                                    {
+                                        <span class="badge bg-success">Aktivan</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">Neaktivan</span>
+                                    }
+                                </td>
+
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
+                                        <form asp-controller="Account"
+                                              asp-action="ToggleActive"
+                                              asp-route-id="@user.Id"
+                                              method="post"
+                                              class="d-inline">
+                                            @Html.AntiForgeryToken()
+
+                                            <button type="submit"
+                                                    class="btn btn-outline-secondary btn-sm rounded-3"
+                                                    disabled="@(isCurrentUser)">
+                                                @(user.IsActive ? "Deaktiviraj" : "Aktiviraj")
+                                            </button>
+                                        </form>
+
+                                        <form asp-controller="Account"
+                                              asp-action="DeleteUser"
+                                              asp-route-id="@user.Id"
+                                              method="post"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Jesi siguran da želiš obrisati korisnika @user.UserName?');">
+                                            @Html.AntiForgeryToken()
+
+                                            <button type="submit"
+                                                    class="btn btn-danger btn-sm rounded-3"
+                                                    disabled="@(isCurrentUser)">
+                                                Obriši
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    Nema korisnika.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

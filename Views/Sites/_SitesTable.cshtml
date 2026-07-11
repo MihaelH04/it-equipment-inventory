@@ -1,0 +1,168 @@
+@model IEnumerable<ITEquipmentInventory.Models.Site>
+@using ITEquipmentInventory.Models
+
+@{
+    string currentSortBy  = ViewBag.SortBy  as string ?? "naziv";
+    string currentSortDir = ViewBag.SortDir as string ?? "asc";
+    string currentSearch  = ViewBag.SearchString as string ?? "";
+    string currentStatus  = ViewBag.StatusFilter as string ?? "";
+
+    string SortIcon(string column)
+    {
+        if (currentSortBy == column)
+            return currentSortDir == "asc" ? "▲" : "▼";
+        return "↕";
+    }
+
+    string NextSortDir(string column)
+    {
+        if (currentSortBy == column)
+            return currentSortDir == "asc" ? "desc" : "asc";
+        return "asc";
+    }
+}
+
+<form method="post" id="sitesBulkForm">
+    @Html.AntiForgeryToken()
+
+    <div class="bulk-toolbar">
+        <div class="bulk-toolbar-left">
+            <button type="submit"
+                    formaction="@Url.Action("BulkEdit", "Sites")"
+                    class="btn btn-primary"
+                    onclick="return validateSitesBulkEdit(this.form);">
+                Izmijeni odabrano
+            </button>
+
+            <button type="submit"
+                    formaction="@Url.Action("DeleteSelected", "Sites")"
+                    class="btn btn-danger"
+                    onclick="return validateSitesBulkDelete(this.form);">
+                Obriši odabrano
+            </button>
+        </div>
+
+        <div class="selection-counter" id="sitesSelectionCounter">Selektirano: 0</div>
+    </div>
+
+    <div class="modern-table-wrap">
+        <div class="table-responsive">
+            <table class="table modern-table app-data-table sites-table align-middle">
+                <thead>
+                    <tr>
+                        <th style="width:42px;">
+                            <input type="checkbox" id="selectAllSites" />
+                        </th>
+
+                        <th>
+                            <a href="@Url.Action("IndexTable", "Sites", new { searchString = currentSearch, statusFilter = currentStatus, sortBy = "naziv", sortDir = NextSortDir("naziv") })"
+                               class="ajax-sort-link">
+                                Naziv <span>@SortIcon("naziv")</span>
+                            </a>
+                        </th>
+
+                        <th>
+                            <a href="@Url.Action("IndexTable", "Sites", new { searchString = currentSearch, statusFilter = currentStatus, sortBy = "sifra", sortDir = NextSortDir("sifra") })"
+                               class="ajax-sort-link">
+                                Šifra <span>@SortIcon("sifra")</span>
+                            </a>
+                        </th>
+
+                        <th>
+                            <a href="@Url.Action("IndexTable", "Sites", new { searchString = currentSearch, statusFilter = currentStatus, sortBy = "lokacija", sortDir = NextSortDir("lokacija") })"
+                               class="ajax-sort-link">
+                                Lokacija <span>@SortIcon("lokacija")</span>
+                            </a>
+                        </th>
+
+                        <th>
+                            <a href="@Url.Action("IndexTable", "Sites", new { searchString = currentSearch, statusFilter = currentStatus, sortBy = "status", sortDir = NextSortDir("status") })"
+                               class="ajax-sort-link">
+                                Status <span>@SortIcon("status")</span>
+                            </a>
+                        </th>
+
+                        <th>Akcije</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr class="row-selector">
+                                <td>
+                                    <input type="checkbox"
+                                           name="selectedIds"
+                                           value="@item.Id"
+                                           class="row-checkbox hidden-row-checkbox" />
+                                </td>
+
+                                <td class="inventory-text">@item.Name</td>
+                                <td>@(string.IsNullOrWhiteSpace(item.Code) ? "-" : item.Code)</td>
+                                <td>@(string.IsNullOrWhiteSpace(item.Location) ? "-" : item.Location)</td>
+
+                                <td>
+                                    @if (item.Status == SiteStatus.Aktivno)
+                                    {
+                                        <span class="status-badge status-success">Aktivno</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="status-badge status-danger">Neaktivno</span>
+                                    }
+                                </td>
+
+                                <td>
+                                    <div class="d-flex gap-1 flex-wrap">
+                                        <a asp-action="Edit"
+                                           asp-route-id="@item.Id"
+                                           class="btn btn-warning btn-soft action-link">
+                                            Edit
+                                        </a>
+                                        <a asp-action="Delete"
+                                           asp-route-id="@item.Id"
+                                           class="btn btn-danger btn-soft action-link">
+                                            Obriši
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6">
+                                <div class="empty-state-modern">
+                                    Nema radnih naloga za odabrane filtere.
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+
+<script>
+    function validateSitesBulkEdit(form) {
+        const checked = form.querySelectorAll('input[name="selectedIds"]:checked');
+        if (checked.length === 0) {
+            alert('Odaberi barem jedan radni nalog za grupno uređivanje.');
+            return false;
+        }
+        return true;
+    }
+
+    function validateSitesBulkDelete(form) {
+        const checked = form.querySelectorAll('input[name="selectedIds"]:checked');
+        if (checked.length === 0) {
+            alert('Odaberi barem jedan radni nalog za brisanje.');
+            return false;
+        }
+        return true;
+    }
+</script>

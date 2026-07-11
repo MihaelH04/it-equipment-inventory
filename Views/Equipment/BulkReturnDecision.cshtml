@@ -1,0 +1,195 @@
+@model ITEquipmentInventory.Models.ViewModels.EquipmentBulkReturnDecisionViewModel
+
+@{
+    ViewData["Title"] = "Razduživanje opreme";
+    var selectedNewEmployeeText = Model.NewEmployeeId.HasValue
+        ? Model.Employees.FirstOrDefault(x => x.Value == Model.NewEmployeeId.Value.ToString())?.Text ?? ""
+        : "";
+    var selectedNewSiteText = Model.NewSiteId.HasValue
+        ? Model.Sites.FirstOrDefault(x => x.Value == Model.NewSiteId.Value.ToString())?.Text ?? ""
+        : "";
+}
+
+<div class="container py-4">
+    <div class="mb-4">
+        <h1 class="fw-bold mb-2">Razduživanje opreme</h1>
+        <p class="text-muted mb-0">Odabrano stavki: <strong>@Model.SelectedCount</strong></p>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4">
+            <form asp-action="BulkReturnDecisionSave" method="post">
+                @Html.AntiForgeryToken()
+
+                @for (int i = 0; i < Model.SelectedIds.Count; i++)
+                {
+                    <input type="hidden" name="SelectedIds[@i]" value="@Model.SelectedIds[i]" />
+                }
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold d-block">Što želiš napraviti?</label>
+
+                    <div class="form-check mb-2">
+                        <input class="form-check-input"
+                               type="radio"
+                               name="ActionType"
+                               id="actionFree"
+                               value="free"
+                               @(Model.ActionType == "free" ? "checked" : null) />
+                        <label class="form-check-label" for="actionFree">
+                            Samo razduži i oslobodi opremu
+                        </label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="radio"
+                               name="ActionType"
+                               id="actionTransfer"
+                               value="transfer"
+                               @(Model.ActionType == "transfer" ? "checked" : null) />
+                        <label class="form-check-label" for="actionTransfer">
+                            Razduži i odmah zaduži drugoj osobi
+                        </label>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label asp-for="EffectiveDate" class="form-label fw-semibold">Datum promjene</label>
+                        <input asp-for="EffectiveDate" type="date" class="form-control" />
+                        <span asp-validation-for="EffectiveDate" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="HandedOverBy" class="form-label fw-semibold">Razdužio</label>
+                        <select asp-for="HandedOverBy"
+                                class="form-select"
+                                asp-items="Model.HandedOverByOptions">
+                        </select>
+                        <span asp-validation-for="HandedOverBy" class="text-danger"></span>
+                        <div class="form-text">
+                            Prikazuju se samo aktivni administratori iz korisnika.
+                        </div>
+                    </div>
+                </div>
+
+                <div id="transferFields" class="border rounded-4 p-3 mb-4" style="display:none;">
+                    <h5 class="fw-bold mb-3">Novo zaduženje</h5>
+
+                    <div class="row g-3">
+                        <div class="col-md-6 position-relative autocomplete-search-wrap">
+                            <label asp-for="NewEmployeeId" class="form-label fw-semibold">Novi zaposlenik</label>
+                            <input type="hidden" asp-for="NewEmployeeId" id="NewEmployeeId" />
+                            <input type="text"
+                                   id="newEmployeeAutocomplete"
+                                   class="form-control"
+                                   placeholder="Upiši šifru, ime ili prezime radnika..."
+                                   value="@selectedNewEmployeeText"
+                                   autocomplete="off" />
+                            <div id="newEmployeeSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+                            <span asp-validation-for="NewEmployeeId" class="text-danger"></span>
+                        </div>
+
+                        <div class="col-md-6 position-relative autocomplete-search-wrap">
+                            <label asp-for="NewSiteId" class="form-label fw-semibold">Novi radni nalog</label>
+                            <input type="hidden" asp-for="NewSiteId" id="NewSiteId" />
+                            <input type="text"
+                                   id="newSiteAutocomplete"
+                                   class="form-control"
+                                   placeholder="Upiši šifru ili naziv radnog naloga..."
+                                   value="@selectedNewSiteText"
+                                   autocomplete="off" />
+                            <div id="newSiteSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+                            <span asp-validation-for="NewSiteId" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3">Odabrana oprema</h5>
+
+                    <div class="table-responsive">
+                        <table class="table modern-table bulk-return-table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Inventurni broj</th>
+                                    <th>Naziv</th>
+                                    <th>Trenutni zaposlenik</th>
+                                    <th>Trenutni radni nalog</th>
+                                    <th>Datum zaduženja</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.SelectedEquipment)
+                                {
+                                    <tr>
+                                        <td>@item.InventoryNumber</td>
+                                        <td>@item.Name</td>
+                                        <td>
+                                            @if (item.CurrentEmployee != null)
+                                            {
+                                                @(string.IsNullOrWhiteSpace(item.CurrentEmployee.WorkerCode)
+                                                    ? item.CurrentEmployee.FullName
+                                                    : item.CurrentEmployee.WorkerCode + " - " + item.CurrentEmployee.FullName)
+                                            }
+                                            else
+                                            {
+                                                @:-
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (item.CurrentSite != null)
+                                            {
+                                                @(string.IsNullOrWhiteSpace(item.CurrentSite.Code)
+                                                    ? item.CurrentSite.Name
+                                                    : item.CurrentSite.Code + " - " + item.CurrentSite.Name)
+                                            }
+                                            else
+                                            {
+                                                @:-
+                                            }
+                                        </td>
+                                        <td>@(item.AssignedAt.HasValue ? item.AssignedAt.Value.ToString("dd.MM.yyyy") : "-")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4">Spremi</button>
+                    <a asp-action="Index" class="btn btn-secondary px-4">Odustani</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        function toggleTransferFields() {
+            const transfer = document.getElementById('actionTransfer');
+            const fields = document.getElementById('transferFields');
+            if (!transfer || !fields) return;
+
+            fields.style.display = transfer.checked ? 'block' : 'none';
+        }
+
+        document.querySelectorAll('input[name="ActionType"]').forEach(radio => {
+            radio.addEventListener('change', toggleTransferFields);
+        });
+
+        setupRemoteEntityAutocomplete('newEmployeeAutocomplete', 'NewEmployeeId', 'newEmployeeSuggestions', '@Url.Action("SearchEmployees", "Equipment")', { hideDelayMs: 700 });
+        setupRemoteEntityAutocomplete('newSiteAutocomplete', 'NewSiteId', 'newSiteSuggestions', '@Url.Action("SearchSites", "Equipment")', { hideDelayMs: 700 });
+
+        toggleTransferFields();
+    </script>
+}

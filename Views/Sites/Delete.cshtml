@@ -1,0 +1,28 @@
+@model ITEquipmentInventory.Models.Site
+
+@{
+    ViewData["Title"] = "Obriši gradilište";
+}
+
+<div class="container mt-4">
+    <h1>Obriši gradilište</h1>
+
+    <div class="alert alert-warning">
+        Jesi li siguran da želiš obrisati ovo gradilište?
+    </div>
+
+    <dl class="row">
+        <dt class="col-sm-3">Naziv gradilišta</dt>
+        <dd class="col-sm-9">@Model.Name</dd>
+
+        <dt class="col-sm-3">Lokacija</dt>
+        <dd class="col-sm-9">@Model.Location</dd>
+
+    </dl>
+
+    <form asp-action="Delete" method="post">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">Obriši</button>
+        <a asp-action="Index" class="btn btn-secondary">Odustani</a>
+    </form>
+</div>

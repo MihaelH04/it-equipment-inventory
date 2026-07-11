@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="hr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ITEquipmentInventory</title>
+
+    <script>
+        (function () {
+            try {
+                const savedTheme = localStorage.getItem('app-theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.setAttribute('data-theme', savedTheme || (prefersDark ? 'dark' : 'light'));
+            } catch (_) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/app-modern.css" asp-append-version="true" />
+</head>
+
+<body class="app-body">
+    @{
+        var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+        var action = ViewContext.RouteData.Values["action"]?.ToString();
+        var isAdmin = User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin");
+        var profileImagePath = User?.FindFirst("ProfileImagePath")?.Value;
+        var displayName = User?.FindFirst("FullName")?.Value ?? User?.Identity?.Name ?? "Korisnik";
+
+        // Datum rođenja dolazi iz sigurnog login claima.
+        // Cookie samo označava da čestitku treba prikazati nakon prijave/spremanja profila.
+        var birthDateClaim = User?.FindFirst("DateOfBirth")?.Value;
+        var hasBirthdayClaim = DateTime.TryParseExact(
+            birthDateClaim,
+            "yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None,
+            out var birthDate);
+        var isBirthdayToday = hasBirthdayClaim &&
+                              birthDate.Month == DateTime.Today.Month &&
+                              birthDate.Day == DateTime.Today.Day;
+    }
+
+    <header class="topbar app-topbar">
+        <div class="topbar-left">
+            <button class="menu-toggle-btn"
+                    type="button"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#appSidebar"
+                    aria-controls="appSidebar"
+                    aria-label="Otvori izbornik">
+                <span aria-hidden="true">☰</span>
+            </button>
+
+            <a asp-controller="Home" asp-action="Index" class="topbar-brand" aria-label="Početna stranica">
+                <span class="brand-mark">IT</span>
+                <span class="brand-text">
+                    <strong>Equipment</strong>
+                    <small>Inventory</small>
+                </span>
+            </a>
+        </div>
+
+        <div class="topbar-right">
+            <button type="button" id="themeToggleBtn" class="theme-toggle-btn" title="Promijeni temu" aria-label="Promijeni svijetlu/tamnu temu">
+                <span class="theme-toggle-icon" aria-hidden="true">🌙</span>
+            </button>
+
+            @if (User?.Identity?.IsAuthenticated ?? false)
+            {
+                <a asp-controller="Account" asp-action="Profile" class="user-chip d-none d-md-flex user-chip-link" title="Otvori moj profil">
+                    @if (!string.IsNullOrWhiteSpace(profileImagePath))
+                    {
+                        <img src="@profileImagePath" alt="Profil" class="user-avatar user-avatar-image" />
+                    }
+                    else
+                    {
+                        <span class="user-avatar">@((User.Identity!.Name ?? "U").Substring(0, 1).ToUpper())</span>
+                    }
+                    <span class="user-meta">
+                        <strong>@displayName</strong>
+                        <small>@(isAdmin ? "Admin" : "Korisnik")</small>
+                    </span>
+                </a>
+
+                @if (isAdmin)
+                {
+                    <a asp-controller="Account" asp-action="Users" class="btn btn-outline-primary btn-sm app-pill-btn">
+                        👥 Korisnici
+                    </a>
+                }
+
+                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm app-pill-btn">
+                        ↪ Odjava
+                    </button>
+                </form>
+            }
+        </div>
+    </header>
+
+    <div class="offcanvas offcanvas-start custom-offcanvas app-sidebar" tabindex="-1" id="appSidebar" aria-labelledby="appSidebarLabel">
+        <div class="offcanvas-header sidebar-header">
+            <a asp-controller="Home" asp-action="Index"
+               class="sidebar-brand d-flex align-items-center justify-content-center w-100 py-2">
+                <img src="~/logo/LOGO.png" alt="LOGO FIRME DODATI U WWWROOT/LOGO" />
+            </a>
+
+            <button type="button" class="btn-close ms-2" data-bs-dismiss="offcanvas" aria-label="Zatvori"></button>
+        </div>
+
+        <div class="offcanvas-body">
+            <nav class="sidebar-nav" aria-label="Glavna navigacija">
+                <a class="sidebar-link @(controller == "Home" ? "active" : "")"
+                   asp-controller="Home"
+                   asp-action="Index"
+                   data-nav-shortcut="Alt+1">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Home</span>
+                </a>
+
+                <a class="sidebar-link @(controller == "Account" && action == "Profile" ? "active" : "")"
+                   asp-controller="Account" asp-action="Profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Moj profil</span>
+                </a>
+
+                @if (isAdmin)
+                {
+                    <a class="sidebar-link @(controller == "Equipment" ? "active" : "")"
+                       asp-controller="Equipment"
+                       asp-action="Index"
+                       data-nav-shortcut="Alt+2">
+                        <span class="nav-icon">💻</span>
+                        <span class="nav-text">Oprema</span>
+                    </a>
+
+                    <a class="sidebar-link @(controller == "PrinterConsumables" && action != "History" ? "active" : "")"
+                       asp-controller="PrinterConsumables"
+                       asp-action="Index"
+                       data-nav-shortcut="Alt+6">
+                        <span class="nav-icon">🖨</span>
+                        <span class="nav-text">Toneri i tinte</span>
+                    </a>
+
+                    <a class="sidebar-link @(controller == "PrinterConsumables" && action == "History" ? "active" : "")"
+                       asp-controller="PrinterConsumables" asp-action="History">
+                        <span class="nav-icon">📊</span>
+                        <span class="nav-text">Evidencija tonera</span>
+                    </a>
+
+                    <a class="sidebar-link @(controller == "Employees" ? "active" : "")"
+                       asp-controller="Employees"
+                       asp-action="Index"
+                       data-nav-shortcut="Alt+3">
+                        <span class="nav-icon">👤</span>
+                        <span class="nav-text">Zaposlenici</span>
+                    </a>
+
+                    <a class="sidebar-link @(controller == "Sites" ? "active" : "")"
+                       asp-controller="Sites"
+                       asp-action="Index"
+                       data-nav-shortcut="Alt+4">
+                        <span class="nav-icon">📋</span>
+                        <span class="nav-text">Radni nalozi</span>
+                    </a>
+
+                    <a class="sidebar-link @(controller == "EquipmentReturn" ? "active" : "")"
+                       asp-controller="EquipmentReturn"
+                       asp-action="Index"
+                       data-nav-shortcut="Alt+5">
+                        <span class="nav-icon">↩</span>
+                        <span class="nav-text">Razduženja</span>
+                    </a>
+
+                    <a class="sidebar-link @(controller == "RecycleBin" ? "active" : "")"
+                       asp-controller="RecycleBin" asp-action="Index">
+                        <span class="nav-icon">🗑️</span>
+                        <span class="nav-text">Nedavno obrisano</span>
+                    </a>
+
+                    <div class="sidebar-section-title">Uvoz podataka</div>
+
+                    <a class="sidebar-link @(controller == "Import" && action == "ImportSites" ? "active" : "")"
+                       asp-controller="Import"
+                       asp-action="ImportSites">
+                        <span class="nav-icon">📥</span>
+                        <span class="nav-text">Uvoz radnih naloga</span>
+                    </a>
+
+                    <a class="sidebar-link @(controller == "Import" && action == "ImportEmployees" ? "active" : "")"
+                       asp-controller="Import"
+                       asp-action="ImportEmployees">
+                        <span class="nav-icon">📥</span>
+                        <span class="nav-text">Uvoz zaposlenika</span>
+                    </a>
+
+                    <a class="sidebar-link @(controller == "Import" && action == "ImportEquipment" ? "active" : "")"
+                       asp-controller="Import"
+                       asp-action="ImportEquipment">
+                        <span class="nav-icon">📥</span>
+                        <span class="nav-text">Uvoz opreme</span>
+                    </a>
+                }
+            </nav>
+        </div>
+    </div>
+
+    <main class="main-content app-main-content">
+        <div class="content-shell app-content-shell">
+            @RenderBody()
+        </div>
+    </main>
+
+    <button type="button"
+            id="backToTopBtn"
+            class="back-to-top-btn"
+            aria-label="Vrati se na vrh stranice"
+            title="Vrati se na vrh">
+        ↑
+    </button>
+
+    @if (isBirthdayToday)
+    {
+        <div class="birthday-overlay"
+             id="birthdayOverlay"
+             role="dialog"
+             aria-modal="true"
+             aria-label="Rođendanska čestitka"
+             hidden>
+            <div class="birthday-confetti" aria-hidden="true"></div>
+            <div class="birthday-card">
+                <div class="birthday-emoji">🎉🎂🎈</div>
+                <div class="birthday-kicker">Danas je tvoj dan!</div>
+                <h2>Sretan rođendan, @displayName!</h2>
+                <p>Želimo ti prekrasan dan, puno zdravlja, sreće i uspjeha!</p>
+                <button type="button" class="btn btn-primary btn-lg" id="closeBirthdayGreeting">
+                    Hvala! 🎊
+                </button>
+            </div>
+        </div>
+    }
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @if (isBirthdayToday)
+    {
+        <script>
+            (function () {
+                const cookieName = 'ITEquipmentInventory.BirthdayGreeting';
+                const shouldShow = document.cookie
+                    .split('; ')
+                    .some(item => item.startsWith(cookieName + '='));
+
+                if (!shouldShow) return;
+
+                // Cookie je jednokratan: čestitka se prikaže samo nakon prijave
+                // ili nakon spremanja profila na današnji datum rođenja.
+                document.cookie = cookieName + '=; Max-Age=0; path=/; SameSite=Lax';
+
+                const overlay = document.getElementById('birthdayOverlay');
+                const closeButton = document.getElementById('closeBirthdayGreeting');
+                if (!overlay) return;
+
+                overlay.hidden = false;
+                requestAnimationFrame(() => overlay.classList.add('is-visible'));
+                document.body.classList.add('birthday-celebrating');
+
+                const closeGreeting = function () {
+                    overlay.classList.remove('is-visible');
+                    document.body.classList.remove('birthday-celebrating');
+                    setTimeout(() => overlay.remove(), 220);
+                };
+
+                closeButton?.addEventListener('click', closeGreeting);
+                overlay.addEventListener('click', function (event) {
+                    if (event.target === overlay) closeGreeting();
+                });
+                document.addEventListener('keydown', function (event) {
+                    if (event.key === 'Escape' && document.getElementById('birthdayOverlay'))
+                        closeGreeting();
+                });
+            })();
+        </script>
+    }
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+
+</html>

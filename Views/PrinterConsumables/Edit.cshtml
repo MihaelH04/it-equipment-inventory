@@ -1,0 +1,24 @@
+@model ITEquipmentInventory.Models.PrinterConsumable
+@{
+    ViewData["Title"] = "Uredi artikl";
+}
+<div class="container-fluid py-4 admin-shell consumable-form-page">
+    <div class="consumable-form-header mb-4">
+        <div>
+            <span class="consumables-kicker">Uređivanje artikla</span>
+            <h1 class="mb-1">@Model.Name</h1>
+            <p class="text-muted mb-0">Uredi artikl, kompatibilne printere i trenutačne količine.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-secondary">← Natrag na pregled</a>
+    </div>
+
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="consumable-form-card">
+        <input asp-for="Id" type="hidden" />
+        <partial name="_Form" model="Model" />
+        <div class="consumable-form-actions">
+            <a asp-action="Index" class="btn btn-outline-secondary">Odustani</a>
+            <button type="submit" class="btn btn-primary px-4">Spremi promjene</button>
+        </div>
+    </form>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

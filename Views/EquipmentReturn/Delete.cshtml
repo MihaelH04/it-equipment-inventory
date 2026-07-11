@@ -1,0 +1,34 @@
+@model ITEquipmentInventory.Models.EquipmentReturn
+
+@{
+    ViewData["Title"] = "Obriši razduženje";
+}
+
+<div class="container mt-4">
+    <h1>Obriši razduženje</h1>
+    <div class="alert alert-warning">Jesi li siguran da želiš obrisati ovaj zapis razduženja?</div>
+
+    <dl class="row">
+        <dt class="col-sm-3">Inventurni broj</dt>
+        <dd class="col-sm-9">@Model.InventoryNumber</dd>
+
+        <dt class="col-sm-3">Naziv</dt>
+        <dd class="col-sm-9">@Model.Name</dd>
+
+        <dt class="col-sm-3">Zaposlenik</dt>
+        <dd class="col-sm-9">@Model.PreviousEmployeeName</dd>
+
+        <dt class="col-sm-3">Radni nalog</dt>
+        <dd class="col-sm-9">@Model.PreviousSiteName</dd>
+
+        <dt class="col-sm-3">Datum razduženja</dt>
+        <dd class="col-sm-9">@Model.ReturnedAt.ToString("dd.MM.yyyy")</dd>
+    </dl>
+
+    <form asp-action="Delete" method="post">
+        <input type="hidden" asp-for="Id" />
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-danger">Obriši</button>
+        <a asp-action="Index" class="btn btn-secondary">Odustani</a>
+    </form>
+</div>

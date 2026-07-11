@@ -1,0 +1,206 @@
+@model IEnumerable<ITEquipmentInventory.Models.Employee>
+
+@{
+    ViewData["Title"] = "Zaposlenici";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-3">
+        <div>
+            <h1 class="mb-1">Zaposlenici</h1>
+            <p class="text-muted mb-0">Pregled zaposlenika s grupnim uređivanjem i brisanjem.</p>
+        </div>
+
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <div class="stat-card bg-success text-white">
+                <div class="stat-broj">@ViewBag.Aktivni</div>
+                <div class="stat-label">Aktivni</div>
+            </div>
+            <div class="stat-card bg-danger text-white">
+                <div class="stat-broj">@ViewBag.Neaktivni</div>
+                <div class="stat-label">Neaktivni</div>
+            </div>
+            <div class="stat-card bg-secondary text-white">
+                <div class="stat-broj">@ViewBag.Ukupno</div>
+                <div class="stat-label">Ukupno</div>
+            </div>
+            <a asp-action="ExportExcel"
+               class="btn btn-outline-success app-export-excel"
+               data-export-form="employeesFiltersForm"
+               data-export-base-url="@Url.Action("ExportExcel", "Employees")">
+                Izvoz Excel
+            </a>
+            <a asp-action="Create" class="btn btn-primary" data-add-new>Dodaj zaposlenika</a>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <form id="employeesFiltersForm" method="get" asp-action="Index" class="row g-2 mb-3">
+        <input type="hidden" name="sortBy" id="employeesSortByInput" value="@ViewBag.SortBy" />
+        <input type="hidden" name="sortDir" id="employeesSortDirInput" value="@ViewBag.SortDir" />
+
+        <div class="col-md-6 autocomplete-search-wrap">
+            <input type="text"
+                   id="employeesMainSearch"
+                   name="searchString"
+                   value="@ViewBag.SearchString"
+                   class="form-control modern-input"
+                   placeholder="Pretraži po šifri, imenu, prezimenu ili radnom nalogu..."
+                   autocomplete="off"
+                   data-main-search="true" />
+            <div id="employeesMainSearchSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+        </div>
+
+        <div class="col-md-2">
+            <select name="statusFilter" class="form-select">
+                <option value="">— Svi statusi —</option>
+                <option value="Aktivan" selected="@((string?)ViewBag.StatusFilter == "Aktivan")">Aktivan</option>
+                <option value="Neaktivan" selected="@((string?)ViewBag.StatusFilter == "Neaktivan")">Neaktivan</option>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-secondary w-100">Pretraži</button>
+        </div>
+
+        <div class="col-md-2">
+            <button type="button" id="resetEmployeesFiltersBtn" class="btn btn-outline-dark w-100">Reset</button>
+        </div>
+    </form>
+
+    <div id="employeesTableContainer">
+        @await Html.PartialAsync("_EmployeesTable", Model)
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        wireEmployeesTableUi();
+
+        const filtersForm = document.getElementById('employeesFiltersForm');
+        if (filtersForm) {
+            filtersForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                refreshEmployeesTableFromForm();
+            });
+
+            filtersForm.querySelectorAll('select').forEach(el => {
+                el.addEventListener('change', refreshEmployeesTableFromForm);
+            });
+        }
+
+        document.getElementById('resetEmployeesFiltersBtn').addEventListener('click', function () {
+            filtersForm.reset();
+            document.getElementById('employeesSortByInput').value = 'sifra';
+            document.getElementById('employeesSortDirInput').value = 'asc';
+            refreshEmployeesTableFromForm();
+        });
+
+     setupRemoteEntityAutocomplete(
+    'employeesMainSearch',
+    null,
+    'employeesMainSearchSuggestions',
+    '@Url.Action("SearchEmployeeSuggestions", "Employees")',
+    {
+        hideDelayMs: 1000,
+        autoHighlightFirst: false,
+        enterSelects: false,
+        tabSelects: true,
+        onSelect: function () {
+            document.getElementById('employeesSortByInput').value = 'sifra';
+            document.getElementById('employeesSortDirInput').value = 'asc';
+            refreshEmployeesTableFromForm();
+        }
+    }
+);
+
+        window.setupExportLinksFromForms();
+    });
+
+    function refreshEmployeesTableFromForm() {
+        const form = document.getElementById('employeesFiltersForm');
+        const params = new URLSearchParams(new FormData(form));
+        loadEmployeesTable(`/Employees/IndexTable?${params.toString()}`);
+        window.setupExportLinksFromForms();
+    }
+
+    function loadEmployeesTable(url) {
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('employeesTableContainer').innerHTML = html;
+            wireEmployeesTableUi();
+        });
+    }
+
+    function wireEmployeesTableUi() {
+        document.querySelectorAll('#employeesTableContainer .ajax-sort-link').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const url = new URL(this.href, window.location.origin);
+                document.getElementById('employeesSortByInput').value = url.searchParams.get('sortBy') ?? 'sifra';
+                document.getElementById('employeesSortDirInput').value = url.searchParams.get('sortDir') ?? 'asc';
+                refreshEmployeesTableFromForm();
+            });
+        });
+
+        setupEmployeesRowSelection();
+    }
+
+    function setupEmployeesRowSelection() {
+        const selectAll = document.getElementById('selectAllEmployees');
+        const rows = document.querySelectorAll('#employeesTableContainer .row-selector');
+
+        rows.forEach(row => {
+            const checkbox = row.querySelector('.row-checkbox');
+            if (!checkbox) return;
+
+            row.addEventListener('click', function (e) {
+                if (e.target.closest('.action-link') || e.target.closest('a') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('label')) return;
+
+                checkbox.checked = !checkbox.checked;
+                row.classList.toggle('selected-row', checkbox.checked);
+                syncEmployeesSelection();
+            });
+
+            checkbox.addEventListener('click', function (e) { e.stopPropagation(); });
+            checkbox.addEventListener('change', function () {
+                row.classList.toggle('selected-row', checkbox.checked);
+                syncEmployeesSelection();
+            });
+        });
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                document.querySelectorAll('#employeesTableContainer .row-checkbox').forEach(cb => {
+                    cb.checked = this.checked;
+                    cb.closest('tr')?.classList.toggle('selected-row', cb.checked);
+                });
+                syncEmployeesSelection();
+            });
+        }
+
+        syncEmployeesSelection();
+    }
+
+    function syncEmployeesSelection() {
+        const all = document.querySelectorAll('#employeesTableContainer .row-checkbox');
+        const checked = document.querySelectorAll('#employeesTableContainer .row-checkbox:checked');
+        const selectAll = document.getElementById('selectAllEmployees');
+        const counter = document.getElementById('employeesSelectionCounter');
+
+        if (counter) counter.textContent = `Selektirano: ${checked.length}`;
+        if (selectAll) selectAll.checked = all.length > 0 && all.length === checked.length;
+    }
+</script>
+}

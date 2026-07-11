@@ -1,0 +1,92 @@
+@model IEnumerable<ITEquipmentInventory.Models.DeletedItem>
+@{
+    ViewData["Title"] = "Nedavno obrisano";
+    var search = ViewBag.SearchString as string ?? string.Empty;
+    var groups = Model.GroupBy(x => x.EntityLabel).OrderBy(x => x.Key);
+}
+
+<div class="container-fluid py-4 admin-shell recycle-page">
+    <div class="consumables-page-header mb-4">
+        <div>
+            <span class="consumables-kicker">Koš za smeće</span>
+            <h1 class="mb-1">Nedavno obrisane stavke</h1>
+            <p class="text-muted mb-0">Stavke se mogu vratiti 30 dana nakon brisanja. Nakon toga se automatski trajno uklanjaju.</p>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success rounded-4 border-0 shadow-sm">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger rounded-4 border-0 shadow-sm">@TempData["Error"]</div>
+    }
+
+    <form method="get" class="single-search-card mb-4">
+        <input type="search" name="searchString" value="@search" class="form-control" data-main-search="true"
+               placeholder="Pretraži obrisane stavke, tablicu ili korisnika..." />
+        <button type="submit" class="btn btn-primary">Pretraži</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+    </form>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state-modern card p-5">
+            <div class="display-5 mb-3">🗑️</div>
+            <strong>Koš je prazan</strong>
+            <div class="text-muted mt-2">Nema stavki obrisanih u posljednjih 30 dana.</div>
+        </div>
+    }
+    else
+    {
+        @foreach (var group in groups)
+        {
+            <section class="recycle-group mb-4">
+                <div class="recycle-group-title">
+                    <span>@group.Key</span>
+                    <span class="badge rounded-pill text-bg-secondary">@group.Count()</span>
+                </div>
+                <div class="modern-table-wrap">
+                    <div class="table-responsive">
+                        <table class="table modern-table recycle-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Obrisana stavka</th>
+                                    <th>Obrisao</th>
+                                    <th>Vrijeme brisanja</th>
+                                    <th>Može se vratiti do</th>
+                                    <th class="text-end">Akcije</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var item in group)
+                            {
+                                <tr>
+                                    <td data-label="Stavka"><strong>@item.DisplayName</strong></td>
+                                    <td data-label="Obrisao">@(item.DeletedBy ?? "Nepoznato")</td>
+                                    <td data-label="Obrisano">@item.DeletedAtUtc.ToLocalTime().ToString("dd.MM.yyyy. HH:mm")</td>
+                                    <td data-label="Rok">@item.ExpiresAtUtc.ToLocalTime().ToString("dd.MM.yyyy. HH:mm")</td>
+                                    <td data-label="Akcije">
+                                        <div class="d-flex gap-2 justify-content-end flex-wrap">
+                                            <form asp-action="Restore" method="post">
+                                                <input type="hidden" name="id" value="@item.Id" />
+                                                <button class="btn btn-sm btn-success" type="submit">↩ Vrati</button>
+                                            </form>
+                                            <form asp-action="DeletePermanently" method="post"
+                                                  onsubmit="return confirm('Trajno obrisati ovu stavku? Ovo se više ne može poništiti.');">
+                                                <input type="hidden" name="id" value="@item.Id" />
+                                                <button class="btn btn-sm btn-outline-danger" type="submit">Trajno obriši</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        }
+    }
+</div>

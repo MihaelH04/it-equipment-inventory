@@ -1,0 +1,51 @@
+@model ITEquipmentInventory.Models.ViewModels.LoginViewModel
+
+@{
+    ViewData["Title"] = "Prijava";
+}
+
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="login-icon">🔐</div>
+            <div>
+                <h1>Prijava</h1>
+                <p>Prijavi se za korištenje sustava inventure.</p>
+            </div>
+        </div>
+
+        <form asp-controller="Account" asp-action="Login" method="post" class="login-form">
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" asp-for="ReturnUrl" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="UserName" class="form-label">Korisničko ime</label>
+                <input asp-for="UserName"
+                       class="form-control login-input"
+                       autocomplete="username"
+                       autofocus />
+                <span asp-validation-for="UserName" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label">Lozinka</label>
+                <input asp-for="Password"
+                       type="password"
+                       class="form-control login-input"
+                       autocomplete="current-password" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+
+            <div class="login-note">Prijava traje najviše 3 sata i ne sprema se trajno u browser.</div>
+
+            <button type="submit" class="btn btn-primary login-submit">Prijavi se</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

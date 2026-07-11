@@ -1,0 +1,43 @@
+@model ITEquipmentInventory.Models.ViewModels.CreateAppUserViewModel
+
+@{
+    ViewData["Title"] = "Prvi admin";
+}
+
+<div class="container py-5" style="max-width: 560px;">
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4">
+            <h1 class="h3 fw-bold mb-1">Stvori prvog admina</h1>
+            <p class="text-muted mb-4">U sustavu još ne postoji korisnik. Prvi korisnik automatski postaje admin.</p>
+
+            <form asp-action="BootstrapAdmin" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="mb-3">
+                    <label asp-for="UserName" class="form-label"></label>
+                    <input asp-for="UserName" class="form-control" autofocus />
+                    <span asp-validation-for="UserName" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="FullName" class="form-label"></label>
+                    <input asp-for="FullName" class="form-control" />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Password" class="form-label"></label>
+                    <input asp-for="Password" class="form-control" />
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 rounded-4 fw-bold">Stvori admina</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,97 @@
+@model ITEquipmentInventory.Models.ViewModels.EquipmentBulkEditViewModel
+
+@{
+    ViewData["Title"] = "Grupno uređivanje opreme";
+}
+
+<div class="container py-4 bulk-edit-shell">
+    <div class="mb-4">
+        <h1 class="fw-bold mb-2">Grupno uređivanje opreme</h1>
+        <p class="text-muted mb-0">Odabrano stavki: <strong>@Model.SelectedCount</strong></p>
+    </div>
+
+    <div class="card bulk-edit-card">
+        <div class="card-body">
+            <div class="alert alert-info rounded-4 border-0">
+                Promijeni samo ona polja koja želiš. Sve što ostaviš prazno neće se mijenjati.
+            </div>
+
+            <form asp-action="BulkEditSave" method="post" autocomplete="off">
+                @Html.AntiForgeryToken()
+
+                @for (int i = 0; i < Model.SelectedIds.Count; i++)
+                {
+                    <input type="hidden" name="SelectedIds[@i]" value="@Model.SelectedIds[i]" />
+                }
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="HandedOverBy" class="form-label fw-semibold">Predao</label>
+                        <select asp-for="HandedOverBy"
+                                class="form-select"
+                                asp-items="Model.HandedOverByOptions">
+                        </select>
+                        <span asp-validation-for="HandedOverBy" class="text-danger"></span>
+                        <div class="form-text">
+                            Prikazuju se samo aktivni administratori iz korisnika.
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Status" class="form-label fw-semibold">Status</label>
+                        <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<ITEquipmentInventory.Models.EquipmentStatus>()">
+                            <option value="">-- ne mijenjaj --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6 autocomplete-search-wrap">
+                        <label class="form-label fw-semibold">Radni nalog</label>
+                        <input type="hidden" asp-for="CurrentSiteId" id="CurrentSiteId" />
+                        <input type="text"
+                               id="siteAutocomplete"
+                               class="form-control"
+                               placeholder="Upiši šifru ili naziv radnog naloga..."
+                               autocomplete="off" />
+                        <div id="siteSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+                    </div>
+
+                    <div class="col-md-6 autocomplete-search-wrap">
+                        <label class="form-label fw-semibold">Zaposlenik</label>
+                        <input type="hidden" asp-for="CurrentEmployeeId" id="CurrentEmployeeId" />
+                        <input type="text"
+                               id="employeeAutocomplete"
+                               class="form-control"
+                               placeholder="Upiši šifru, ime ili prezime radnika..."
+                               autocomplete="off" />
+                        <div id="employeeSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="AssignedAt" class="form-label fw-semibold">Datum zaduženja</label>
+                        <input asp-for="AssignedAt" type="date" class="form-control" />
+                        <div class="form-text">Ako polje ostane prazno, datum se neće mijenjati.</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="ReturnedAt" class="form-label fw-semibold">Datum razduženja</label>
+                        <input asp-for="ReturnedAt" type="date" class="form-control" />
+                        <div class="form-text">Ako polje ostane prazno, datum se neće mijenjati.</div>
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary rounded-4 px-4">Spremi promjene</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary rounded-4 px-4">Odustani</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        setupRemoteEntityAutocomplete('siteAutocomplete', 'CurrentSiteId', 'siteSuggestions', '@Url.Action("SearchSites", "Equipment")', { hideDelayMs: 1000 });
+        setupRemoteEntityAutocomplete('employeeAutocomplete', 'CurrentEmployeeId', 'employeeSuggestions', '@Url.Action("SearchEmployees", "Equipment")', { hideDelayMs: 1000 });
+    </script>
+}

@@ -1,0 +1,128 @@
+@model ITEquipmentInventory.ViewModels.DashboardViewModel
+
+@{
+    ViewData["Title"] = "Home";
+    var isAdmin = User.IsInRole("Admin");
+}
+
+<div class="dashboard-page-v4">
+     @if (User.IsInRole("Admin")){
+    <section class="hero-panel-v4" aria-label="Pregled sustava">
+        
+
+        
+        @if (User.IsInRole("Admin"))
+        {
+            
+                <div class="hero-copy-v4">
+                    <span class="hero-kicker-v4">IT Equipment Inventory</span>
+                    <h1>Pregled inventure</h1>
+                </div>
+         
+        }
+        @if (isAdmin)
+        {
+            <div class="hero-actions-v4">
+                <a asp-controller="Equipment" asp-action="Create" class="btn btn-primary app-action-btn" data-add-new>
+                    <span aria-hidden="true">＋</span> Dodaj opremu
+                </a>
+                <a asp-controller="Account" asp-action="Create" class="btn btn-outline-primary app-action-btn">
+                    <span aria-hidden="true">👤</span> Dodaj korisnika
+                </a>
+            </div>
+        }
+    </section>
+    }
+    @if (isAdmin)
+    {
+        <section class="dashboard-grid-v4" aria-label="Glavni dashboard">
+            <a asp-controller="Equipment" asp-action="Index" class="dashboard-card-v4 card-blue">
+                <span class="card-glow-v4"></span>
+                <div class="card-head-v4">
+                    <span class="card-icon-v4">💻</span>
+                    <span class="card-chip-v4">Sva oprema</span>
+                </div>
+                <div class="dashboard-label-v4">Ukupno opreme</div>
+                <div class="dashboard-value-v4">@Model.TotalEquipment</div>
+                <div class="dashboard-footer-v4">Otvori tablicu opreme <span>→</span></div>
+            </a>
+
+            <a asp-controller="Equipment" asp-action="Index" asp-route-statusFilter="Zaduzeno"
+               class="dashboard-card-v4 card-orange">
+                <span class="card-glow-v4"></span>
+                <div class="card-head-v4">
+                    <span class="card-icon-v4">📦</span>
+                    <span class="card-chip-v4">Aktivno</span>
+                </div>
+                <div class="dashboard-label-v4">Trenutno zaduženo</div>
+                <div class="dashboard-value-v4">@Model.AssignedEquipment</div>
+                <div class="dashboard-footer-v4">Pregled zadužene opreme <span>→</span></div>
+            </a>
+
+            <a asp-controller="Equipment" asp-action="Index" asp-route-statusFilter="Dostupno"
+               class="dashboard-card-v4 card-green">
+                <span class="card-glow-v4"></span>
+                <div class="card-head-v4">
+                    <span class="card-icon-v4">✅</span>
+                    <span class="card-chip-v4">Spremno</span>
+                </div>
+                <div class="dashboard-label-v4">Slobodna oprema</div>
+                <div class="dashboard-value-v4">@Model.FreeEquipment</div>
+                <div class="dashboard-footer-v4">Pregled slobodne opreme <span>→</span></div>
+            </a>
+
+            <a asp-controller="Equipment" asp-action="Index" asp-route-statusFilter="Servis"
+               class="dashboard-card-v4 card-red">
+                <span class="card-glow-v4"></span>
+                <div class="card-head-v4">
+                    <span class="card-icon-v4">🛠</span>
+                    <span class="card-chip-v4">Servis</span>
+                </div>
+                <div class="dashboard-label-v4">Na servisu</div>
+                <div class="dashboard-value-v4">@Model.EquipmentInService</div>
+                <div class="dashboard-footer-v4">Pregled servisa <span>→</span></div>
+            </a>
+        </section>
+
+        <section class="dashboard-mini-grid-v4" aria-label="Dodatni moduli">
+            <a asp-controller="Employees" asp-action="Index" class="mini-stat-card-v4">
+                <span class="mini-icon-v4">👥</span>
+                <span class="mini-copy-v4">
+                    <strong>@Model.TotalEmployees</strong>
+                    <small>Zaposlenici</small>
+                </span>
+                <span class="mini-arrow-v4">→</span>
+            </a>
+
+            <a asp-controller="Sites" asp-action="Index" class="mini-stat-card-v4">
+                <span class="mini-icon-v4">📋</span>
+                <span class="mini-copy-v4">
+                    <strong>@Model.TotalSites</strong>
+                    <small>Radni nalozi</small>
+                </span>
+                <span class="mini-arrow-v4">→</span>
+            </a>
+
+            <a asp-controller="EquipmentReturn" asp-action="Index" class="mini-stat-card-v4">
+                <span class="mini-icon-v4">↩</span>
+                <span class="mini-copy-v4">
+                    <strong>Razduženja</strong>
+                    <small>Otvori evidenciju</small>
+                </span>
+                <span class="mini-arrow-v4">→</span>
+            </a>
+        </section>
+    }
+    else
+    {
+        <section class="user-dashboard-card-v4">
+            <div class="user-dashboard-icon-v4">🔐</div>
+            <div>
+                <h2>Moj korisnički prostor</h2>
+                <p class="mb-0 text-muted">
+                    Prijavljen si kao obični korisnik. Dostupni su samo moduli koje admin dodijeli tvojoj ulozi.
+                </p>
+            </div>
+        </section>
+    }
+</div>

@@ -1,0 +1,30 @@
+@model ITEquipmentInventory.Models.Employee
+
+@{
+    ViewData["Title"] = "Obriši zaposlenika";
+}
+
+<div class="container mt-4">
+    <h1>Obriši zaposlenika</h1>
+
+    <div class="alert alert-warning">
+        Jesi li siguran da želiš obrisati ovog zaposlenika?
+    </div>
+
+    <dl class="row">
+        <dt class="col-sm-3">Šifra radnika</dt>
+        <dd class="col-sm-9">@Model.WorkerCode</dd>
+
+        <dt class="col-sm-3">Ime i prezime</dt>
+        <dd class="col-sm-9">@Model.FullName</dd>
+
+        <dt class="col-sm-3">Gradilište</dt>
+        <dd class="col-sm-9">@(Model.Site?.Name ?? "-")</dd>
+    </dl>
+
+    <form asp-action="Delete" method="post">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">Obriši</button>
+        <a asp-action="Index" class="btn btn-secondary">Odustani</a>
+    </form>
+</div>
