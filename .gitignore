@@ -29,7 +29,7 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
-
+inventura.db
 
 # Backups
 backups/
