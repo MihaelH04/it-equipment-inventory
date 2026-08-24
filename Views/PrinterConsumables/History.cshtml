@@ -36,10 +36,11 @@
             <label asp-for="DateTo" class="form-label">Do datuma</label>
             <input type="date" name="dateTo" value='@Model.DateTo.ToString("yyyy-MM-dd")' class="form-control" />
         </div>
-        <div class="history-search-field">
+        <div class="history-search-field autocomplete-search-wrap">
             <label class="form-label">Pretraga</label>
-            <input type="search" name="searchString" value="@Model.SearchString" class="form-control"
-                   data-main-search="true" placeholder="Artikl, šifra, printer, radni nalog, korisnik ili radnja..." />
+            <input type="search" id="consumableHistorySearch" name="searchString" value="@Model.SearchString" class="form-control"
+                   data-main-search="true" autocomplete="off" placeholder="Artikl, šifra, printer, radni nalog, korisnik ili radnja..." />
+            <div id="consumableHistorySearchSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
         </div>
         <div>
             <label class="form-label">Sortiranje</label>
@@ -158,3 +159,21 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    setupRemoteEntityAutocomplete(
+        'consumableHistorySearch',
+        null,
+        'consumableHistorySearchSuggestions',
+        '@Html.Raw(Url.Action("SearchHistorySuggestions", "PrinterConsumables", new { dateFrom = Model.DateFrom.ToString("yyyy-MM-dd"), dateTo = Model.DateTo.ToString("yyyy-MM-dd") }))',
+        {
+            minLength: 2,
+            debounceMs: 300,
+            onSelect: function () {
+                document.querySelector('.history-filter-card').requestSubmit();
+            }
+        }
+    );
+</script>
+}

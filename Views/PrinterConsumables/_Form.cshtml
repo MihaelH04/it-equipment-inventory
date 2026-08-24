@@ -9,6 +9,7 @@
         .Distinct(StringComparer.CurrentCultureIgnoreCase)
         .ToArray();
     var initialPrintersJson = JsonSerializer.Serialize(initialPrinters);
+    var isCreate = Model.Id == 0;
 }
 
 <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
@@ -16,9 +17,78 @@
 <div class="consumable-form-grid consumable-form-grid--simple">
     <section class="consumable-form-section consumable-form-section--wide">
         <div class="consumable-form-section-heading">
+            <span>🖼</span>
+            <div>
+                <h2>Osnovni podaci</h2>
+                <p>Unesi naziv, vrstu, sliku i ostale informacije za karticu proizvoda.</p>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-lg-4">
+                <label asp-for="ProductImage" class="form-label"></label>
+                <div class="consumable-image-picker">
+                    <div class="consumable-image-preview">
+                        @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+                        {
+                            <img src="@Model.ImageUrl" alt="Slika artikla" />
+                        }
+                        else
+                        {
+                            <div class="consumable-image-placeholder">
+                                <span>+</span>
+                                <small>Dodaj sliku</small>
+                            </div>
+                        }
+                    </div>
+                    <input asp-for="ProductImage" type="file" class="form-control" accept="image/jpeg,image/png,image/webp" />
+                </div>
+                <span asp-validation-for="ProductImage" class="text-danger"></span>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="row g-3">
+                    <div class="col-lg-8">
+                        <label asp-for="Name" class="form-label"></label>
+                        <input asp-for="Name" class="form-control" placeholder="Primjer: Epson 103" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <label asp-for="ProductCode" class="form-label"></label>
+                        <input asp-for="ProductCode" class="form-control" placeholder="Primjer: C13T00S14A" />
+                        <span asp-validation-for="ProductCode" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Type" class="form-label"></label>
+                        <select asp-for="Type" class="form-select">
+                            <option value="Toner">Toner</option>
+                            <option value="Tinta">Tinta</option>
+                            <option value="KutijaZaOdrzavanje">Kutija za održavanje</option>
+                            <option value="Ostalo">Ostalo</option>
+                        </select>
+                        <span asp-validation-for="Type" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="form-check form-switch consumable-switch-field w-100">
+                            <input asp-for="IsOriginal" class="form-check-input" id="isOriginalSwitch" />
+                            <label class="form-check-label" for="isOriginalSwitch" id="originalProductLabel">
+                                @(Model.IsOriginal ? "Originalni proizvod" : "Zamjenski proizvod")
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="consumable-form-section consumable-form-section--wide">
+        <div class="consumable-form-section-heading">
             <span>🖨</span>
             <div>
-                <h2>Kompatibilni printeri i artikl</h2>
+                <h2>Kompatibilni printeri</h2>
                 <p>Odaberi jedan ili više printera iz postojeće opreme. Sprema se samo naziv printera.</p>
             </div>
         </div>
@@ -28,82 +98,59 @@
                 <label asp-for="CompatiblePrintersText" class="form-label">Kompatibilni printeri</label>
                 <div class="printer-multi-picker" data-printer-picker
                      data-options="@printerOptionsJson"
-                     data-initial="@initialPrintersJson">
+                     data-initial="@initialPrintersJson"
+                     data-search-url="@Url.Action("SearchCompatiblePrinters", "PrinterConsumables")">
                     <div class="printer-picker-selected" data-selected></div>
                     <div class="printer-picker-input-row">
                         <input type="search" class="form-control printer-picker-search" data-search
-                               placeholder="Kreni pisati naziv printera, npr. Epson L1455..." autocomplete="off" />
-                        <button type="button" class="btn btn-outline-secondary printer-picker-clear" data-clear>Očisti</button>
+                               placeholder="Pretraži postojeće printere u bazi" autocomplete="off" />
+                        <button type="button" class="btn btn-primary printer-picker-add" data-add aria-label="Dodaj odabrani printer">＋</button>
                     </div>
                     <div class="printer-picker-dropdown" data-dropdown></div>
                 </div>
                 <textarea asp-for="CompatiblePrintersText" class="d-none" data-printer-hidden></textarea>
                 <span asp-validation-for="CompatiblePrintersText" class="text-danger"></span>
-                <div class="form-text">Primjer: odaberi Epson L1455 i Epson L3250 ako isti toner ili tinta odgovara na više printera.</div>
+                <div class="form-text">Odaberi jedan ili više printera iz postojeće baze, pa ih dodaj u popis.</div>
             </div>
+        </div>
+    </section>
 
-            <div class="col-lg-8">
-                <label asp-for="Name" class="form-label"></label>
-                <input asp-for="Name" class="form-control" placeholder="Primjer: Epson 103 crna tinta" />
-                <span asp-validation-for="Name" class="text-danger"></span>
-            </div>
-
-            <div class="col-lg-4">
-                <label asp-for="ProductCode" class="form-label"></label>
-                <input asp-for="ProductCode" class="form-control" placeholder="Primjer: C13T00S14A" />
-                <span asp-validation-for="ProductCode" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-4">
-                <label asp-for="Type" class="form-label"></label>
-                <select asp-for="Type" class="form-select">
-                    <option value="Toner">Toner</option>
-                    <option value="Tinta">Tinta</option>
-                    <option value="KutijaZaOdrzavanje">Kutija za održavanje</option>
-                    <option value="Ostalo">Ostalo</option>
-                </select>
-                <span asp-validation-for="Type" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-4">
-                <label asp-for="Color" class="form-label"></label>
-                <select asp-for="Color" asp-items="Html.GetEnumSelectList<ConsumableColor>()" class="form-select"></select>
-                <span asp-validation-for="Color" class="text-danger"></span>
-            </div>
-
-            <div class="col-md-4 d-flex align-items-end">
-                <div class="form-check form-switch consumable-switch-field w-100">
-                    <input asp-for="IsOriginal" class="form-check-input" id="isOriginalSwitch" />
-                    <label class="form-check-label" for="isOriginalSwitch" id="originalProductLabel">
-                        @(Model.IsOriginal ? "Originalni proizvod" : "Zamjenski proizvod")
-                    </label>
+    @if (isCreate)
+    {
+        <section class="consumable-form-section consumable-form-section--wide">
+            <div class="consumable-form-section-heading">
+                <span>📦</span>
+                <div>
+                    <h2>Početno stanje</h2>
+                    <p>Za toner i tintu stanje po bojama vodi se kroz Naruči, Zaprimi i Izdaj.</p>
                 </div>
             </div>
-        </div>
-    </section>
 
-    <section class="consumable-form-section consumable-form-section--wide">
-        <div class="consumable-form-section-heading">
-            <span>📦</span>
-            <div>
-                <h2>Stanje</h2>
-                <p>Unesi trenutačno stanje i količinu koja je već naručena.</p>
+            <div class="consumable-color-info mb-3" id="directColorStockInfo">
+                Ne stvaraj zasebne proizvode Cyan, Magenta, Yellow i Black. Dodaj samo zajednički proizvod, primjerice Epson 103.
             </div>
-        </div>
-
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label asp-for="QuantityAvailable" class="form-label"></label>
-                <input asp-for="QuantityAvailable" type="number" min="0" max="100000" class="form-control" />
-                <span asp-validation-for="QuantityAvailable" class="text-danger"></span>
+            <div class="row g-3">
+                <div class="col-md-6" data-direct-stock-field>
+                    <label asp-for="QuantityAvailable" class="form-label"></label>
+                    <input asp-for="QuantityAvailable" type="number" min="0" max="100000" class="form-control" />
+                    <span asp-validation-for="QuantityAvailable" class="text-danger"></span>
+                </div>
+                <div class="col-md-6" data-direct-stock-field>
+                    <label asp-for="QuantityOrdered" class="form-label"></label>
+                    <input asp-for="QuantityOrdered" type="number" min="0" max="100000" class="form-control" />
+                    <span asp-validation-for="QuantityOrdered" class="text-danger"></span>
+                </div>
             </div>
-            <div class="col-md-6">
-                <label asp-for="QuantityOrdered" class="form-label"></label>
-                <input asp-for="QuantityOrdered" type="number" min="0" max="100000" class="form-control" />
-                <span asp-validation-for="QuantityOrdered" class="text-danger"></span>
+        </section>
+    }
+    else
+    {
+        <section class="consumable-form-section consumable-form-section--wide">
+            <div class="consumable-color-info">
+                Stanje i boje ne mijenjaju se u osnovnim podacima kartice. Koristi radnje Naruči, Zaprimi, Pogledaj stanje i Izdaj.
             </div>
-        </div>
-    </section>
+        </section>
+    }
 </div>
 
 <script>
@@ -118,15 +165,41 @@
             syncOriginalLabel();
         }
 
+        const directType = document.getElementById('Type');
+        function syncDirectStockFields() {
+            if (!directType) return;
+            const usesColors = directType.value === 'Toner' || directType.value === 'Tinta';
+            document.querySelectorAll('[data-direct-stock-field]').forEach(function (field) {
+                field.classList.toggle('is-disabled', usesColors);
+                const input = field.querySelector('input');
+                if (input) {
+                    input.disabled = usesColors;
+                    if (usesColors) input.value = '0';
+                }
+            });
+            const info = document.getElementById('directColorStockInfo');
+            if (info) info.classList.toggle('d-none', !usesColors);
+        }
+        if (directType) {
+            directType.addEventListener('change', syncDirectStockFields);
+            syncDirectStockFields();
+        }
+
         document.querySelectorAll('[data-printer-picker]').forEach(function (picker) {
             const options = JSON.parse(picker.dataset.options || '[]');
             const initial = JSON.parse(picker.dataset.initial || '[]');
             const selectedWrap = picker.querySelector('[data-selected]');
             const search = picker.querySelector('[data-search]');
             const dropdown = picker.querySelector('[data-dropdown]');
-            const clearBtn = picker.querySelector('[data-clear]');
+            const addBtn = picker.querySelector('[data-add]');
             const hidden = picker.parentElement.querySelector('[data-printer-hidden]');
+            const searchUrl = picker.dataset.searchUrl || '';
             let selected = [];
+            let remoteMatches = [];
+            let remoteLoadedTerm = '';
+            let activeIndex = -1;
+            let debounceTimer = null;
+            let requestController = null;
 
             function normalize(value) {
                 return (value || '').trim().replace(/\s+/g, ' ');
@@ -180,24 +253,40 @@
 
             function renderDropdown() {
                 const query = normalize(search.value).toLocaleLowerCase('hr-HR');
-                const matches = options
-                    .filter(x => !hasSelected(x))
-                    .filter(x => !query || x.toLocaleLowerCase('hr-HR').includes(query))
-                    .slice(0, 12);
+                const matches = (query.length >= 2 && remoteLoadedTerm === query
+                    ? remoteMatches
+                    : options.map(x => ({ text: x, value: x, context: '' })))
+                    .filter(x => !hasSelected(x.value || x.text))
+                    .filter(x => !query || normalize(x.text).toLocaleLowerCase('hr-HR').includes(query) || query.length >= 2)
+                    .slice(0, 20);
 
                 dropdown.innerHTML = '';
+                activeIndex = Math.min(activeIndex, matches.length - 1);
                 if (matches.length === 0) {
                     const item = document.createElement('div');
                     item.className = 'printer-picker-option is-empty';
                     item.textContent = options.length === 0 ? 'U opremi nema printera za odabir.' : 'Nema rezultata.';
                     dropdown.appendChild(item);
                 } else {
-                    matches.forEach(function (name) {
+                    matches.forEach(function (item, index) {
+                        const name = item.value || item.text;
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.className = 'printer-picker-option';
-                        btn.innerHTML = '<span></span><strong>+</strong>';
-                        btn.querySelector('span').textContent = name;
+                        btn.classList.toggle('active', index === activeIndex);
+                        const content = document.createElement('span');
+                        const title = document.createElement('span');
+                        title.textContent = item.text || name;
+                        content.appendChild(title);
+                        if (item.context) {
+                            const context = document.createElement('small');
+                            context.className = 'd-block text-muted';
+                            context.textContent = item.context + (item.fuzzy ? ' · sličan rezultat' : '');
+                            content.appendChild(context);
+                        }
+                        const plus = document.createElement('strong');
+                        plus.textContent = '+';
+                        btn.append(content, plus);
                         btn.addEventListener('mousedown', function (event) {
                             event.preventDefault();
                             event.stopPropagation();
@@ -212,13 +301,60 @@
                 }
             }
 
+            async function loadRemoteMatches() {
+                const term = normalize(search.value);
+                if (!searchUrl || term.length < 2) {
+                    remoteMatches = [];
+                    remoteLoadedTerm = '';
+                    renderDropdown();
+                    return;
+                }
+
+                if (requestController) requestController.abort();
+                requestController = new AbortController();
+                picker.classList.add('is-loading');
+                try {
+                    const response = await fetch(searchUrl + '?term=' + encodeURIComponent(term), {
+                        signal: requestController.signal,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (!response.ok) throw new Error('Autocomplete request failed.');
+                    remoteMatches = await response.json();
+                    remoteLoadedTerm = term.toLocaleLowerCase('hr-HR');
+                    activeIndex = -1;
+                    renderDropdown();
+                } catch (error) {
+                    if (error.name !== 'AbortError') console.error(error);
+                } finally {
+                    picker.classList.remove('is-loading');
+                }
+            }
+
             search.addEventListener('input', function () {
                 picker.classList.add('is-open');
-                renderDropdown();
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(loadRemoteMatches, 300);
             });
             search.addEventListener('focus', function () {
                 picker.classList.add('is-open');
                 renderDropdown();
+            });
+            search.addEventListener('keydown', function (event) {
+                const buttons = dropdown.querySelectorAll('.printer-picker-option:not(.is-empty)');
+                if (event.key === 'ArrowDown' && buttons.length) {
+                    event.preventDefault();
+                    activeIndex = Math.min(activeIndex + 1, buttons.length - 1);
+                    renderDropdown();
+                } else if (event.key === 'ArrowUp' && buttons.length) {
+                    event.preventDefault();
+                    activeIndex = activeIndex < 0 ? buttons.length - 1 : Math.max(activeIndex - 1, 0);
+                    renderDropdown();
+                } else if (event.key === 'Enter' && activeIndex >= 0 && buttons[activeIndex]) {
+                    event.preventDefault();
+                    buttons[activeIndex].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                } else if (event.key === 'Escape') {
+                    picker.classList.remove('is-open');
+                }
             });
             picker.addEventListener('mousedown', function (event) {
                 event.stopPropagation();
@@ -226,13 +362,17 @@
             document.addEventListener('mousedown', function (event) {
                 if (!picker.contains(event.target)) picker.classList.remove('is-open');
             });
-            clearBtn.addEventListener('mousedown', function (event) {
+            addBtn.addEventListener('mousedown', function (event) {
                 event.preventDefault();
                 event.stopPropagation();
-                selected = [];
-                picker.classList.add('is-open');
-                render();
-                search.focus();
+                const typed = normalize(search.value);
+                const available = remoteMatches.length > 0 ? remoteMatches.map(x => x.value || x.text) : options;
+                const exact = available.find(x => normalize(x).toLocaleLowerCase('hr-HR') === typed.toLocaleLowerCase('hr-HR'));
+                if (exact) add(exact);
+                else if (typed) {
+                    const first = available.find(x => !hasSelected(x) && x.toLocaleLowerCase('hr-HR').includes(typed.toLocaleLowerCase('hr-HR')));
+                    if (first) add(first);
+                }
             });
 
             initial.forEach(add);

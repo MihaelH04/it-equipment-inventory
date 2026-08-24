@@ -24,4 +24,10 @@
     </None>
   </ItemGroup>
 
+  <!-- DB Browser for SQLite lokalne projektne datoteke nikada nisu build/publish sadržaj. -->
+  <ItemGroup>
+    <Content Remove="**\*.sqbpro" />
+    <None Remove="**\*.sqbpro" />
+  </ItemGroup>
+
 </Project>

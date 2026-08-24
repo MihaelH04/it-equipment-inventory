@@ -1,10 +1,37 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "Home";
+    var action = ViewContext.RouteData.Values["action"]?.ToString() ?? "Index";
+    var controllerClass = controller.ToLowerInvariant();
+    var actionClass = action.ToLowerInvariant();
+    var pageTitle = ViewData["Title"]?.ToString() ?? "IT Equipment Inventory";
+    var isAdmin = User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin");
+    var profileImagePath = User?.FindFirst("ProfileImagePath")?.Value;
+    var displayName = User?.FindFirst("FullName")?.Value ?? User?.Identity?.Name ?? "Korisnik";
+
+    // Datum rođenja dolazi iz sigurnog login claima.
+    // Cookie samo označava da čestitku treba prikazati nakon prijave/spremanja profila.
+    var birthDateClaim = User?.FindFirst("DateOfBirth")?.Value;
+    var hasBirthdayClaim = DateTime.TryParseExact(
+        birthDateClaim,
+        "yyyy-MM-dd",
+        System.Globalization.CultureInfo.InvariantCulture,
+        System.Globalization.DateTimeStyles.None,
+        out var birthDate);
+    var isBirthdayToday = hasBirthdayClaim &&
+                          birthDate.Month == DateTime.Today.Month &&
+                          birthDate.Day == DateTime.Today.Day;
+}
 <!DOCTYPE html>
 <html lang="hr">
-
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ITEquipmentInventory</title>
+    <meta name="theme-color" content="#0c1830" />
+    <title>@pageTitle - IT Equipment Inventory</title>
+    <link rel="icon"
+      type="image/x-icon"
+      href="~/favicon.ico"
+      asp-append-version="true" />
 
     <script>
         (function () {
@@ -21,29 +48,11 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/app-modern.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/app-redesign.css" asp-append-version="true" />
 </head>
-
-<body class="app-body">
-    @{
-        var controller = ViewContext.RouteData.Values["controller"]?.ToString();
-        var action = ViewContext.RouteData.Values["action"]?.ToString();
-        var isAdmin = User?.Identity?.IsAuthenticated == true && User.IsInRole("Admin");
-        var profileImagePath = User?.FindFirst("ProfileImagePath")?.Value;
-        var displayName = User?.FindFirst("FullName")?.Value ?? User?.Identity?.Name ?? "Korisnik";
-
-        // Datum rođenja dolazi iz sigurnog login claima.
-        // Cookie samo označava da čestitku treba prikazati nakon prijave/spremanja profila.
-        var birthDateClaim = User?.FindFirst("DateOfBirth")?.Value;
-        var hasBirthdayClaim = DateTime.TryParseExact(
-            birthDateClaim,
-            "yyyy-MM-dd",
-            System.Globalization.CultureInfo.InvariantCulture,
-            System.Globalization.DateTimeStyles.None,
-            out var birthDate);
-        var isBirthdayToday = hasBirthdayClaim &&
-                              birthDate.Month == DateTime.Today.Month &&
-                              birthDate.Day == DateTime.Today.Day;
-    }
+<body class="app-body route-@controllerClass route-action-@actionClass">
+    <a class="skip-link" href="#mainContent">Preskoči na sadržaj</a>
+    <div class="app-ambient" aria-hidden="true"></div>
 
     <header class="topbar app-topbar">
         <div class="topbar-left">
@@ -53,165 +62,240 @@
                     data-bs-target="#appSidebar"
                     aria-controls="appSidebar"
                     aria-label="Otvori izbornik">
-                <span aria-hidden="true">☰</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true">
+                    <path d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
             </button>
 
             <a asp-controller="Home" asp-action="Index" class="topbar-brand" aria-label="Početna stranica">
-                <span class="brand-mark">IT</span>
-                <span class="brand-text">
-                    <strong>Equipment</strong>
-                    <small>Inventory</small>
+                <span class="topbar-brand-logo topbar-brand-logo--text" aria-label="IT Equipment Inventory">
+                    <strong>IT</strong><span>Inventory</span>
                 </span>
             </a>
+
+            <div class="topbar-page-context" aria-label="Trenutna stranica">
+                <small>IT Equipment Inventory</small>
+                <strong>@pageTitle</strong>
+            </div>
         </div>
 
         <div class="topbar-right">
-            <button type="button" id="themeToggleBtn" class="theme-toggle-btn" title="Promijeni temu" aria-label="Promijeni svijetlu/tamnu temu">
+            <button type="button"
+                    id="themeToggleBtn"
+                    class="theme-toggle-btn"
+                    title="Promijeni temu"
+                    aria-label="Promijeni svijetlu ili tamnu temu">
                 <span class="theme-toggle-icon" aria-hidden="true">🌙</span>
             </button>
 
             @if (User?.Identity?.IsAuthenticated ?? false)
             {
-                <a asp-controller="Account" asp-action="Profile" class="user-chip d-none d-md-flex user-chip-link" title="Otvori moj profil">
-                    @if (!string.IsNullOrWhiteSpace(profileImagePath))
-                    {
-                        <img src="@profileImagePath" alt="Profil" class="user-avatar user-avatar-image" />
-                    }
-                    else
-                    {
-                        <span class="user-avatar">@((User.Identity!.Name ?? "U").Substring(0, 1).ToUpper())</span>
-                    }
-                    <span class="user-meta">
-                        <strong>@displayName</strong>
-                        <small>@(isAdmin ? "Admin" : "Korisnik")</small>
-                    </span>
-                </a>
-
-                @if (isAdmin)
-                {
-                    <a asp-controller="Account" asp-action="Users" class="btn btn-outline-primary btn-sm app-pill-btn">
-                        👥 Korisnici
-                    </a>
-                }
-
-                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-outline-secondary btn-sm app-pill-btn">
-                        ↪ Odjava
+                <div class="dropdown topbar-user-dropdown">
+                    <button type="button"
+                            class="user-chip user-chip-link dropdown-toggle"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            aria-label="Otvori korisnički izbornik">
+                        @if (!string.IsNullOrWhiteSpace(profileImagePath))
+                        {
+                            <img src="@profileImagePath" alt="Profil" class="user-avatar user-avatar-image" />
+                        }
+                        else
+                        {
+                            <span class="user-avatar">@((User.Identity!.Name ?? "U").Substring(0, 1).ToUpper())</span>
+                        }
+                        <span class="user-meta">
+                            <strong>@displayName</strong>
+                            <small>@(isAdmin ? "Administrator" : "Korisnik")</small>
+                        </span>
                     </button>
-                </form>
+
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" asp-controller="Account" asp-action="Profile">
+                                <span aria-hidden="true">👤</span> Moj profil
+                            </a>
+                        </li>
+                        @if (isAdmin)
+                        {
+                            <li>
+                                <a class="dropdown-item" asp-controller="Account" asp-action="Users">
+                                    <span aria-hidden="true">👥</span> Korisnici
+                                </a>
+                            </li>
+                        }
+                        <li><hr class="dropdown-divider" /></li>
+                        <li>
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="dropdown-item">
+                                    <span aria-hidden="true">↪</span> Odjava
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
             }
         </div>
     </header>
 
-    <div class="offcanvas offcanvas-start custom-offcanvas app-sidebar" tabindex="-1" id="appSidebar" aria-labelledby="appSidebarLabel">
+    <div class="offcanvas offcanvas-start custom-offcanvas app-sidebar"
+         tabindex="-1"
+         id="appSidebar"
+        aria-labelledby="appSidebarLabel">
         <div class="offcanvas-header sidebar-header">
-            <a asp-controller="Home" asp-action="Index"
-               class="sidebar-brand d-flex align-items-center justify-content-center w-100 py-2">
-                <img src="~/logo/LOGO.png" alt="LOGO FIRME DODATI U WWWROOT/LOGO" />
-            </a>
-
-            <button type="button" class="btn-close ms-2" data-bs-dismiss="offcanvas" aria-label="Zatvori"></button>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="offcanvas" aria-label="Zatvori"></button>
         </div>
 
         <div class="offcanvas-body">
             <nav class="sidebar-nav" aria-label="Glavna navigacija">
+                <div class="sidebar-section-title">Glavno</div>
+
                 <a class="sidebar-link @(controller == "Home" ? "active" : "")"
-                   asp-controller="Home"
-                   asp-action="Index"
-                   data-nav-shortcut="Alt+1">
-                    <span class="nav-icon">🏠</span>
-                    <span class="nav-text">Home</span>
+                   asp-controller="Home" asp-action="Index" data-nav-shortcut="Alt+1">
+                    <span class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10" /><path d="M9 20v-6h6v6" />
+                        </svg>
+                    </span>
+                    <span class="nav-text">Početna</span>
                 </a>
 
                 <a class="sidebar-link @(controller == "Account" && action == "Profile" ? "active" : "")"
                    asp-controller="Account" asp-action="Profile">
-                    <span class="nav-icon">👤</span>
+                    <span class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" />
+                        </svg>
+                    </span>
                     <span class="nav-text">Moj profil</span>
                 </a>
 
                 @if (isAdmin)
                 {
+                    <div class="sidebar-section-title">Evidencija</div>
+
                     <a class="sidebar-link @(controller == "Equipment" ? "active" : "")"
-                       asp-controller="Equipment"
-                       asp-action="Index"
-                       data-nav-shortcut="Alt+2">
-                        <span class="nav-icon">💻</span>
-                        <span class="nav-text">Oprema</span>
+                       asp-controller="Equipment" asp-action="Index" data-nav-shortcut="Alt+2">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" />
+                            </svg>
+                        </span>
+                        <span class="nav-text">Oprema i zaduženja</span>
                     </a>
 
                     <a class="sidebar-link @(controller == "PrinterConsumables" && action != "History" ? "active" : "")"
-                       asp-controller="PrinterConsumables"
-                       asp-action="Index"
-                       data-nav-shortcut="Alt+6">
-                        <span class="nav-icon">🖨</span>
+                       asp-controller="PrinterConsumables" asp-action="Index" data-nav-shortcut="Alt+6">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M6 9V3h12v6" /><rect x="4" y="9" width="16" height="8" rx="2" /><path d="M7 14h10v7H7z" />
+                            </svg>
+                        </span>
                         <span class="nav-text">Toneri i tinte</span>
                     </a>
 
                     <a class="sidebar-link @(controller == "PrinterConsumables" && action == "History" ? "active" : "")"
                        asp-controller="PrinterConsumables" asp-action="History">
-                        <span class="nav-icon">📊</span>
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M4 19V9M10 19V5M16 19v-7M22 19H2" />
+                            </svg>
+                        </span>
                         <span class="nav-text">Evidencija tonera</span>
                     </a>
 
                     <a class="sidebar-link @(controller == "Employees" ? "active" : "")"
-                       asp-controller="Employees"
-                       asp-action="Index"
-                       data-nav-shortcut="Alt+3">
-                        <span class="nav-icon">👤</span>
+                       asp-controller="Employees" asp-action="Index" data-nav-shortcut="Alt+3">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5" />
+                            </svg>
+                        </span>
                         <span class="nav-text">Zaposlenici</span>
                     </a>
 
                     <a class="sidebar-link @(controller == "Sites" ? "active" : "")"
-                       asp-controller="Sites"
-                       asp-action="Index"
-                       data-nav-shortcut="Alt+4">
-                        <span class="nav-icon">📋</span>
+                       asp-controller="Sites" asp-action="Index" data-nav-shortcut="Alt+4">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="5" y="3" width="14" height="18" rx="2" /><path d="M9 3h6v4H9zM9 11h6M9 15h6" />
+                            </svg>
+                        </span>
                         <span class="nav-text">Radni nalozi</span>
                     </a>
 
                     <a class="sidebar-link @(controller == "EquipmentReturn" ? "active" : "")"
-                       asp-controller="EquipmentReturn"
-                       asp-action="Index"
-                       data-nav-shortcut="Alt+5">
-                        <span class="nav-icon">↩</span>
+                       asp-controller="EquipmentReturn" asp-action="Index" data-nav-shortcut="Alt+5">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M9 7 4 12l5 5" /><path d="M4 12h10a6 6 0 0 1 6 6" />
+                            </svg>
+                        </span>
                         <span class="nav-text">Razduženja</span>
+                    </a>
+
+                    <div class="sidebar-section-title">Administracija</div>
+
+                    <a class="sidebar-link @(controller == "Account" && action == "Users" ? "active" : "")"
+                       asp-controller="Account" asp-action="Users">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="9" cy="8" r="3" /><path d="M3 20a6 6 0 0 1 12 0M17 8h4M19 6v4" />
+                            </svg>
+                        </span>
+                        <span class="nav-text">Korisnici</span>
                     </a>
 
                     <a class="sidebar-link @(controller == "RecycleBin" ? "active" : "")"
                        asp-controller="RecycleBin" asp-action="Index">
-                        <span class="nav-icon">🗑️</span>
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" />
+                            </svg>
+                        </span>
                         <span class="nav-text">Nedavno obrisano</span>
                     </a>
 
                     <div class="sidebar-section-title">Uvoz podataka</div>
 
                     <a class="sidebar-link @(controller == "Import" && action == "ImportSites" ? "active" : "")"
-                       asp-controller="Import"
-                       asp-action="ImportSites">
-                        <span class="nav-icon">📥</span>
+                       asp-controller="Import" asp-action="ImportSites">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 3v12M7 10l5 5 5-5" /><path d="M4 20h16" />
+                            </svg>
+                        </span>
                         <span class="nav-text">Uvoz radnih naloga</span>
                     </a>
 
                     <a class="sidebar-link @(controller == "Import" && action == "ImportEmployees" ? "active" : "")"
-                       asp-controller="Import"
-                       asp-action="ImportEmployees">
-                        <span class="nav-icon">📥</span>
+                       asp-controller="Import" asp-action="ImportEmployees">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 3v12M7 10l5 5 5-5" /><path d="M4 20h16" />
+                            </svg>
+                        </span>
                         <span class="nav-text">Uvoz zaposlenika</span>
                     </a>
 
                     <a class="sidebar-link @(controller == "Import" && action == "ImportEquipment" ? "active" : "")"
-                       asp-controller="Import"
-                       asp-action="ImportEquipment">
-                        <span class="nav-icon">📥</span>
+                       asp-controller="Import" asp-action="ImportEquipment">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 3v12M7 10l5 5 5-5" /><path d="M4 20h16" />
+                            </svg>
+                        </span>
                         <span class="nav-text">Uvoz opreme</span>
                     </a>
                 }
             </nav>
+
+    
         </div>
     </div>
 
-    <main class="main-content app-main-content">
+    <main class="main-content app-main-content" id="mainContent" tabindex="-1">
         <div class="content-shell app-content-shell">
             @RenderBody()
         </div>
@@ -222,7 +306,9 @@
             class="back-to-top-btn"
             aria-label="Vrati se na vrh stranice"
             title="Vrati se na vrh">
-        ↑
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m18 15-6-6-6 6" />
+        </svg>
     </button>
 
     @if (isBirthdayToday)
@@ -249,6 +335,7 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/app-redesign.js" asp-append-version="true"></script>
 
     @if (isBirthdayToday)
     {
@@ -293,5 +380,4 @@
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
-
 </html>

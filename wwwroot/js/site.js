@@ -12,12 +12,45 @@
             .replaceAll("'", '&#039;');
     }
 
-    function createSuggestionButton(text, index, onPick) {
+    function appendHighlightedText(parent, text, term) {
+        const source = String(text ?? '');
+        const normalizedSource = normalizeText(source);
+        const tokens = normalizeText(term).split(/\s+/).filter(Boolean);
+        let start = -1;
+        let length = 0;
+        for (const token of tokens) {
+            const candidate = normalizedSource.indexOf(token);
+            if (candidate >= 0 && (start < 0 || candidate < start)) {
+                start = candidate;
+                length = token.length;
+            }
+        }
+        if (start < 0) {
+            parent.textContent = source;
+            return;
+        }
+        parent.append(document.createTextNode(source.slice(0, start)));
+        const mark = document.createElement('mark');
+        mark.className = 'autocomplete-highlight';
+        mark.textContent = source.slice(start, start + length);
+        parent.append(mark, document.createTextNode(source.slice(start + length)));
+    }
+
+    function createSuggestionButton(item, term, index, onPick) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'list-group-item list-group-item-action autocomplete-suggestion-item';
         button.dataset.index = index;
-        button.textContent = text;
+        const title = document.createElement('span');
+        title.className = 'd-block';
+        appendHighlightedText(title, item.text, term);
+        button.appendChild(title);
+        if (item.context) {
+            const context = document.createElement('small');
+            context.className = 'd-block text-muted autocomplete-context';
+            context.textContent = item.context + (item.fuzzy ? ' · sličan rezultat' : '');
+            button.appendChild(context);
+        }
         button.addEventListener('mousedown', function (e) {
             e.preventDefault();
             onPick(index);
@@ -35,8 +68,12 @@
         }
     }
 
-    function showEmptyMessage(suggestions) {
-        suggestions.innerHTML = '<div class="list-group-item text-muted">Nema rezultata</div>';
+    function showEmptyMessage(suggestions, term) {
+        suggestions.innerHTML = '';
+        const message = document.createElement('div');
+        message.className = 'list-group-item text-muted';
+        message.textContent = `Nema rezultata za „${String(term ?? '').trim()}“. Provjerite pravopis ili uklonite jedan od filtera.`;
+        suggestions.appendChild(message);
     }
 
     function normalizeText(value) {
@@ -59,8 +96,9 @@
         const wrapper = input ? input.closest('.autocomplete-search-wrap') : null;
 
         const settings = Object.assign({
-            minLength: 1,
-            debounceMs: 180,
+            minLength: 2,
+            debounceMs: 300,
+            maxItems: 20,
             hideDelayMs: 900,
             onSelect: null,
             clearHiddenOnInput: true,
@@ -88,6 +126,8 @@
         let activeIndex = -1;
         let currentItems = [];
         let lastRequestId = 0;
+        let requestController = null;
+        let currentTerm = '';
 
         function shouldEnterSubmitTypedTerm() {
             if (typeof settings.enterSubmitsTypedTerm === 'boolean') {
@@ -128,21 +168,22 @@
             return true;
         }
 
-        function render(items) {
+        function render(items, term) {
             if (wrapper) {
     wrapper.classList.add('autocomplete-active');
 }
-            currentItems = Array.isArray(items) ? items : [];
+            currentTerm = term || '';
+            currentItems = Array.isArray(items) ? items.slice(0, settings.maxItems) : [];
             activeIndex = settings.autoHighlightFirst && currentItems.length > 0 ? 0 : -1;
             suggestions.innerHTML = '';
 
             if (currentItems.length === 0) {
-                showEmptyMessage(suggestions);
+                showEmptyMessage(suggestions, currentTerm);
                 return;
             }
 
             currentItems.forEach((item, index) => {
-                suggestions.appendChild(createSuggestionButton(item.text, index, pick));
+                suggestions.appendChild(createSuggestionButton(item, currentTerm, index, pick));
             });
 
             setActiveSuggestion(suggestions, activeIndex);
@@ -156,23 +197,35 @@
             }
 
             const requestId = ++lastRequestId;
+            if (requestController) requestController.abort();
+            requestController = new AbortController();
+            if (wrapper) wrapper.classList.add('is-loading');
+            input.setAttribute('aria-busy', 'true');
             try {
-                const response = await fetch(`${url}?term=${encodeURIComponent(cleanTerm)}`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                const separator = url.includes('?') ? '&' : '?';
+                const response = await fetch(`${url}${separator}term=${encodeURIComponent(cleanTerm)}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: requestController.signal
                 });
                 if (!response.ok) return;
 
                 const data = await response.json();
                 if (requestId !== lastRequestId) return;
 
-                render(data);
+                render(data, cleanTerm);
             } catch (error) {
-                console.error(error);
+                if (error.name !== 'AbortError') console.error(error);
+            } finally {
+                if (requestId === lastRequestId) {
+                    if (wrapper) wrapper.classList.remove('is-loading');
+                    input.removeAttribute('aria-busy');
+                }
             }
         }
 
         input.addEventListener('input', function () {
             if (hidden && settings.clearHiddenOnInput) hidden.value = '';
+            if (requestController) requestController.abort();
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => loadSuggestions(input.value), settings.debounceMs);
         });
@@ -267,8 +320,8 @@
 
         function closeSuggestions() {
             if (wrapper) {
-    wrapper.classList.add('autocomplete-active');
-}
+                wrapper.classList.remove('autocomplete-active');
+            }
             suggestions.innerHTML = '';
             currentItems = [];
             activeIndex = -1;
@@ -307,7 +360,7 @@
             }
 
             currentItems.forEach((item, index) => {
-                suggestions.appendChild(createSuggestionButton(item.text, index, pick));
+                suggestions.appendChild(createSuggestionButton(item, input.value, index, pick));
             });
 
             setActiveSuggestion(suggestions, activeIndex);
@@ -399,6 +452,27 @@
                 form.addEventListener('input', updateHref);
             }
             updateHref();
+        });
+    };
+
+    window.updateSearchUrlFromForm = function (form, replace) {
+        if (!form) return;
+        const url = new URL(window.location.href);
+        url.search = new URLSearchParams(new FormData(form)).toString();
+        window.history[replace ? 'replaceState' : 'pushState'](null, '', url);
+    };
+
+    window.restoreSearchFormFromUrl = function (form) {
+        if (!form) return;
+        const params = new URLSearchParams(window.location.search);
+        Array.from(form.elements).forEach(function (element) {
+            if (!element.name || element.type === 'submit' || element.type === 'button') return;
+            if (element.type === 'checkbox' || element.type === 'radio') {
+                element.checked = params.getAll(element.name).includes(element.value);
+                return;
+            }
+            if (params.has(element.name)) element.value = params.get(element.name) ?? '';
+            else if (element.type !== 'hidden') element.value = '';
         });
     };
 

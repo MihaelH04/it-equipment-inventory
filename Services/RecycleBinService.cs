@@ -62,7 +62,11 @@ public class RecycleBinService
                 item.Id, item.Name, item.ProductCode, item.Type, item.Color,
                 item.QuantityAvailable, item.QuantityOrdered, item.IsOriginal,
                 item.CreatedAt, item.UpdatedAt,
-                item.CompatiblePrinters.Select(x => x.PrinterName).ToArray()));
+                item.CompatiblePrinters.Select(x => x.PrinterName).ToArray(),
+                item.ColorStateJson,
+                item.PendingOrders.Select(x => new PendingOrderSnapshot(
+                    x.Color, x.QuantityOrdered, x.QuantityReceived, x.OrderedAt, x.CompletedAt, x.OrderedBy,
+                    x.OrderGroupId)).ToArray()));
         _context.PrinterConsumables.Remove(item);
     }
 
@@ -243,11 +247,26 @@ public class RecycleBinService
             QuantityOrdered = x.QuantityOrdered,
             IsOriginal = x.IsOriginal,
             CreatedAt = x.CreatedAt,
-            UpdatedAt = x.UpdatedAt
+            UpdatedAt = x.UpdatedAt,
+            ColorStateJson = x.ColorStateJson
         };
 
         foreach (var printer in x.CompatiblePrinters.Where(p => !string.IsNullOrWhiteSpace(p)))
             item.CompatiblePrinters.Add(new ConsumableCompatiblePrinter { PrinterName = printer.Trim() });
+
+        foreach (var pending in x.PendingOrders ?? [])
+        {
+            item.PendingOrders.Add(new ConsumablePendingOrder
+            {
+                Color = pending.Color,
+                QuantityOrdered = pending.QuantityOrdered,
+                QuantityReceived = pending.QuantityReceived,
+                OrderedAt = pending.OrderedAt,
+                CompletedAt = pending.CompletedAt,
+                OrderedBy = pending.OrderedBy,
+                OrderGroupId = pending.OrderGroupId
+            });
+        }
 
         _context.PrinterConsumables.Add(item);
     }
@@ -285,7 +304,12 @@ public class RecycleBinService
     private sealed record ConsumableSnapshot(
         int Id, string Name, string? ProductCode, ConsumableType Type, ConsumableColor Color,
         int QuantityAvailable, int QuantityOrdered, bool IsOriginal, DateTime CreatedAt,
-        DateTime? UpdatedAt, string[] CompatiblePrinters);
+        DateTime? UpdatedAt, string[] CompatiblePrinters, string? ColorStateJson = null,
+        PendingOrderSnapshot[]? PendingOrders = null);
+
+    private sealed record PendingOrderSnapshot(
+        ConsumableColor Color, int QuantityOrdered, int QuantityReceived, DateTime OrderedAt,
+        DateTime? CompletedAt, string? OrderedBy, Guid? OrderGroupId = null);
 
     private sealed record EquipmentReturnSnapshot
     {

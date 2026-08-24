@@ -4,6 +4,17 @@
     string currentSort = ViewBag.CurrentSort as string ?? "";
     string currentStatusFilter = ViewBag.CurrentStatusFilter as string ?? "";
     string currentSearch = ViewBag.SearchString as string ?? "";
+    int currentPage = ViewBag.CurrentPage is int pageValue ? pageValue : 1;
+    int pageSize = ViewBag.PageSize is int pageSizeValue ? pageSizeValue : 25;
+    int totalPages = ViewBag.TotalPages is int totalPagesValue ? totalPagesValue : 1;
+    int filteredCount = ViewBag.FilteredCount is int filteredCountValue ? filteredCountValue : Model.Count();
+    int firstItem = ViewBag.FirstItem is int firstItemValue ? firstItemValue : (filteredCount == 0 ? 0 : 1);
+    int lastItem = ViewBag.LastItem is int lastItemValue ? lastItemValue : Model.Count();
+    int[] pageSizeOptions = ViewBag.PageSizeOptions as int[] ?? new[] { 10, 25, 50, 100 };
+
+    int startPage = Math.Max(1, currentPage - 2);
+    int endPage = Math.Min(totalPages, startPage + 4);
+    startPage = Math.Max(1, endPage - 4);
 
     string SortIcon(string ascKey, string descKey)
     {
@@ -67,7 +78,7 @@
                         </th>
 
                         <th class="eq-inventory">
-                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.InventorySort })"
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.InventorySort, page = 1, pageSize })"
                                class="ajax-sort-link">
                                 Inv. br.
                                 <span>@SortIcon("inventory_asc", "inventory_desc")</span>
@@ -75,7 +86,7 @@
                         </th>
 
                         <th class="eq-serial">
-                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.SerialSort })"
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.SerialSort, page = 1, pageSize })"
                                class="ajax-sort-link">
                                 Serijski
                                 <span>@SortIcon("serial_asc", "serial_desc")</span>
@@ -83,7 +94,7 @@
                         </th>
 
                         <th class="eq-type">
-                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.TypeSort })"
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.TypeSort, page = 1, pageSize })"
                                class="ajax-sort-link">
                                 Vrsta
                                 <span>@SortIcon("type_asc", "type_desc")</span>
@@ -91,7 +102,7 @@
                         </th>
 
                         <th class="eq-name">
-                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.NameSort })"
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.NameSort, page = 1, pageSize })"
                                class="ajax-sort-link">
                                 Naziv
                                 <span>@SortIcon("name_asc", "name_desc")</span>
@@ -99,7 +110,7 @@
                         </th>
 
                         <th class="eq-status">
-                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.StatusSort })"
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.StatusSort, page = 1, pageSize })"
                                class="ajax-sort-link">
                                 Status
                                 <span>@SortIcon("status_asc", "status_desc")</span>
@@ -107,7 +118,7 @@
                         </th>
 
                         <th class="eq-site">
-                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.SiteSort })"
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.SiteSort, page = 1, pageSize })"
                                class="ajax-sort-link">
                                 RN
                                 <span>@SortIcon("site_asc", "site_desc")</span>
@@ -115,7 +126,7 @@
                         </th>
 
                         <th class="eq-employee">
-                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.EmployeeSort })"
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.EmployeeSort, page = 1, pageSize })"
                                class="ajax-sort-link">
                                 Osoba
                                 <span>@SortIcon("employee_asc", "employee_desc")</span>
@@ -123,7 +134,7 @@
                         </th>
 
                         <th class="eq-date">
-                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.AssignedAtSort })"
+                            <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.AssignedAtSort, page = 1, pageSize })"
                                class="ajax-sort-link">
                                 Datum
                                 <span>@SortIcon("assignedat_asc", "assignedat_desc")</span>
@@ -230,7 +241,7 @@
                                            asp-route-id="@item.Id"
                                            class="btn btn-info text-white btn-soft action-link"
                                            title="Generiraj zaduženje">
-                                            <span class="equipment-action-icon" aria-hidden="true">📄</span>
+                                            <span class="equipment-action-icon" aria-hidden="true"></span>
                                             <span class="equipment-action-text">Zaduži</span>
                                         </a>
 
@@ -238,7 +249,7 @@
                                            asp-route-id="@item.Id"
                                            class="btn btn-warning btn-soft action-link"
                                            title="Uredi">
-                                            <span class="equipment-action-icon" aria-hidden="true">✏️</span>
+                                            <span class="equipment-action-icon" aria-hidden="true"></span>
                                             <span class="equipment-action-text">Edit</span>
                                         </a>
 
@@ -246,7 +257,7 @@
                                            asp-route-id="@item.Id"
                                            class="btn btn-danger btn-soft action-link"
                                            title="Obriši">
-                                            <span class="equipment-action-icon" aria-hidden="true">🗑️</span>
+                                            <span class="equipment-action-icon" aria-hidden="true"></span>
                                             <span class="equipment-action-text">Obriši</span>
                                         </a>
                                     </div>
@@ -268,6 +279,92 @@
             </table>
         </div>
     </div>
+
+    @if (filteredCount > 0)
+    {
+        <div class="equipment-pagination-shell" aria-label="Navigacija kroz stranice opreme">
+            <div class="equipment-pagination-summary">
+                Prikaz <strong>@firstItem–@lastItem</strong> od <strong>@filteredCount</strong> stavki
+            </div>
+
+            <div class="equipment-pagination-size">
+                <label for="equipmentPageSizeSelect">Redaka po stranici</label>
+                <select id="equipmentPageSizeSelect" class="form-select form-select-sm">
+                    @foreach (var option in pageSizeOptions)
+                    {
+                        <option value="@option" selected="@(option == pageSize)">@option</option>
+                    }
+                </select>
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <nav class="equipment-pagination" aria-label="Stranice opreme">
+                    @if (currentPage > 1)
+                    {
+                        <a class="equipment-page-link equipment-page-nav"
+                           data-page="@(currentPage - 1)"
+                           href="@Url.Action("Index", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = currentSort, page = currentPage - 1, pageSize })">
+                            ‹ Prethodna
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="equipment-page-link equipment-page-nav is-disabled" aria-disabled="true">‹ Prethodna</span>
+                    }
+
+                    @if (startPage > 1)
+                    {
+                        <a class="equipment-page-link" data-page="1"
+                           href="@Url.Action("Index", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = currentSort, page = 1, pageSize })">1</a>
+
+                        @if (startPage > 2)
+                        {
+                            <span class="equipment-page-ellipsis" aria-hidden="true">…</span>
+                        }
+                    }
+
+                    @for (var pageNumber = startPage; pageNumber <= endPage; pageNumber++)
+                    {
+                        if (pageNumber == currentPage)
+                        {
+                            <span class="equipment-page-link is-active" aria-current="page">@pageNumber</span>
+                        }
+                        else
+                        {
+                            <a class="equipment-page-link" data-page="@pageNumber"
+                               href="@Url.Action("Index", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = currentSort, page = pageNumber, pageSize })">@pageNumber</a>
+                        }
+                    }
+
+                    @if (endPage < totalPages)
+                    {
+                        @if (endPage < totalPages - 1)
+                        {
+                            <span class="equipment-page-ellipsis" aria-hidden="true">…</span>
+                        }
+
+                        <a class="equipment-page-link" data-page="@totalPages"
+                           href="@Url.Action("Index", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = currentSort, page = totalPages, pageSize })">@totalPages</a>
+                    }
+
+                    @if (currentPage < totalPages)
+                    {
+                        <a class="equipment-page-link equipment-page-nav"
+                           data-page="@(currentPage + 1)"
+                           href="@Url.Action("Index", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = currentSort, page = currentPage + 1, pageSize })">
+                            Sljedeća ›
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="equipment-page-link equipment-page-nav is-disabled" aria-disabled="true">Sljedeća ›</span>
+                    }
+                </nav>
+            }
+        </div>
+    }
+
 </form>
 
 <script>

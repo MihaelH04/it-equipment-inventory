@@ -23,7 +23,8 @@ public static class ExcelExportHelper
         {
             for (int colIndex = 0; colIndex < headers.Length; colIndex++)
             {
-                worksheet.Cells[rowIndex, colIndex + 1].Value = colIndex < row.Length ? row[colIndex] : null;
+                worksheet.Cells[rowIndex, colIndex + 1].Value =
+                    SafeCellValue(colIndex < row.Length ? row[colIndex] : null);
             }
             rowIndex++;
         }
@@ -42,6 +43,17 @@ public static class ExcelExportHelper
     public static string FileName(string name)
     {
         return $"{name}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+    }
+
+    public static object? SafeCellValue(object? value)
+    {
+        if (value is not string text || string.IsNullOrEmpty(text))
+            return value;
+
+        var trimmedStart = text.TrimStart();
+        if (trimmedStart.Length > 0 && "=+-@".Contains(trimmedStart[0]))
+            return "'" + text;
+        return text;
     }
 
     private static string SafeWorksheetName(string name)

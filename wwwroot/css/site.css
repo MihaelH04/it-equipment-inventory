@@ -1810,3 +1810,33 @@ body.dark-mode .login-input {
         border-radius: 16px;
     }
 }
+
+.autocomplete-search-wrap.is-loading::after,
+.printer-multi-picker.is-loading::after {
+    content: "";
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(100, 116, 139, .35);
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: autocomplete-spin .7s linear infinite;
+}
+
+.autocomplete-highlight {
+    padding: 0;
+    color: inherit;
+    background: rgba(250, 204, 21, .35);
+    border-radius: .2rem;
+}
+
+.autocomplete-context {
+    font-weight: 500;
+    margin-top: .15rem;
+}
+
+@keyframes autocomplete-spin {
+    to { transform: rotate(360deg); }
+}

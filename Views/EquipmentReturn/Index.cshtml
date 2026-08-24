@@ -79,7 +79,7 @@
 
 @section Scripts {
 <script>
-    async function loadEquipmentReturnTable() {
+    async function loadEquipmentReturnTable(updateHistory = true) {
         const host = document.getElementById('equipmentReturnTableHost');
         const form = document.getElementById('equipmentReturnFilterForm');
         const params = new URLSearchParams(new FormData(form));
@@ -94,6 +94,7 @@
             host.innerHTML = await response.text();
             wireReturnSortLinks();
             window.setupExportLinksFromForms();
+            if (updateHistory) window.updateSearchUrlFromForm(form, false);
         } catch (e) {
             console.error(e);
         } finally {
@@ -140,5 +141,10 @@
 
     wireReturnSortLinks();
     window.setupExportLinksFromForms();
+    window.addEventListener('popstate', function () {
+        const form = document.getElementById('equipmentReturnFilterForm');
+        window.restoreSearchFormFromUrl(form);
+        loadEquipmentReturnTable(false);
+    });
 </script>
 }

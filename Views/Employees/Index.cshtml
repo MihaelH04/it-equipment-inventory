@@ -127,10 +127,11 @@
         window.setupExportLinksFromForms();
     });
 
-    function refreshEmployeesTableFromForm() {
+    function refreshEmployeesTableFromForm(updateHistory = true) {
         const form = document.getElementById('employeesFiltersForm');
         const params = new URLSearchParams(new FormData(form));
         loadEmployeesTable(`/Employees/IndexTable?${params.toString()}`);
+        if (updateHistory) window.updateSearchUrlFromForm(form, false);
         window.setupExportLinksFromForms();
     }
 
@@ -202,5 +203,11 @@
         if (counter) counter.textContent = `Selektirano: ${checked.length}`;
         if (selectAll) selectAll.checked = all.length > 0 && all.length === checked.length;
     }
+
+    window.addEventListener('popstate', function () {
+        const form = document.getElementById('employeesFiltersForm');
+        window.restoreSearchFormFromUrl(form);
+        refreshEmployeesTableFromForm(false);
+    });
 </script>
 }

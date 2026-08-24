@@ -38,7 +38,7 @@
         </div>
     </div>
 
-    <form asp-action="GeneratePdf" method="post" novalidate>
+    <form asp-action="GeneratePdf" method="post" novalidate data-file-download="true">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="EquipmentId" />
 

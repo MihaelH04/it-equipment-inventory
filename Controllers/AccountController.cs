@@ -13,6 +13,9 @@ namespace ITEquipmentInventory.Controllers;
 
 public class AccountController : Controller
 {
+    private const int MaxFailedLoginAttempts = 5;
+    private static readonly TimeSpan AccountLockoutDuration = TimeSpan.FromMinutes(1);
+
     private readonly AppDbContext _context;
     private readonly string _profileImagesPath;
     private readonly PasswordHasher<AppUser> _passwordHasher = new();
@@ -48,14 +51,51 @@ public class AccountController : Controller
 
         var userName = model.UserName.Trim();
         var user = await _context.AppUsers.FirstOrDefaultAsync(u => u.UserName == userName);
-        if (user == null || !user.IsActive ||
+
+        var nowUtc = DateTime.UtcNow;
+        if (user?.IsActive == true && user.LockoutEndUtc is { } lockoutEndUtc && lockoutEndUtc > nowUtc)
+        {
+            var remainingMinutes = Math.Max(1, (int)Math.Ceiling((lockoutEndUtc - nowUtc).TotalMinutes));
+            ModelState.AddModelError(string.Empty,
+                $"Račun je zaključan zbog previše neuspjelih pokušaja prijave. Pokušaj ponovno za {remainingMinutes} min.");
+            return View(model);
+        }
+
+        // Istekla blokada započinje novi niz neuspjelih pokušaja.
+        if (user?.LockoutEndUtc is not null)
+        {
+            user.FailedLoginAttempts = 0;
+            user.LockoutEndUtc = null;
+        }
+
+        if (user is null || !user.IsActive ||
             _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, model.Password) == PasswordVerificationResult.Failed)
         {
+            if (user is not null && user.IsActive)
+            {
+                user.FailedLoginAttempts++;
+                user.LastFailedLoginAtUtc = nowUtc;
+                user.LastFailedLoginIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+                if (user.FailedLoginAttempts >= MaxFailedLoginAttempts)
+                {
+                    user.LockoutEndUtc = nowUtc.Add(AccountLockoutDuration);
+                    await _context.SaveChangesAsync();
+                    ModelState.AddModelError(string.Empty,
+                        "Račun je zaključan zbog pet neuspjelih pokušaja prijave. Pokušaj ponovno za 1 minutu.");
+                    return View(model);
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
             ModelState.AddModelError(string.Empty, "Neispravno korisničko ime ili lozinka.");
             return View(model);
         }
 
-        user.LastLoginAtUtc = DateTime.UtcNow;
+        user.FailedLoginAttempts = 0;
+        user.LockoutEndUtc = null;
+        user.LastLoginAtUtc = nowUtc;
         user.LastLoginIp = HttpContext.Connection.RemoteIpAddress?.ToString();
         await _context.SaveChangesAsync();
         await SignInUserAsync(user);

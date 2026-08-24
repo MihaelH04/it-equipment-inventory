@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<PrinterConsumable> PrinterConsumables => Set<PrinterConsumable>();
     public DbSet<ConsumableCompatiblePrinter> ConsumableCompatiblePrinters => Set<ConsumableCompatiblePrinter>();
     public DbSet<ConsumableTransaction> ConsumableTransactions => Set<ConsumableTransaction>();
+    public DbSet<ConsumablePendingOrder> ConsumablePendingOrders => Set<ConsumablePendingOrder>();
     public DbSet<DeletedItem> DeletedItems => Set<DeletedItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -156,6 +157,25 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<ConsumableTransaction>()
             .HasIndex(x => x.SiteName);
+
+        modelBuilder.Entity<ConsumablePendingOrder>()
+            .Property(x => x.Color)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<ConsumablePendingOrder>()
+            .HasOne(x => x.PrinterConsumable)
+            .WithMany(x => x.PendingOrders)
+            .HasForeignKey(x => x.PrinterConsumableId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ConsumablePendingOrder>()
+            .HasIndex(x => new { x.PrinterConsumableId, x.CompletedAt });
+
+        modelBuilder.Entity<ConsumablePendingOrder>()
+            .HasIndex(x => x.OrderedAt);
+
+        modelBuilder.Entity<ConsumablePendingOrder>()
+            .HasIndex(x => x.OrderGroupId);
 
         modelBuilder.Entity<DeletedItem>()
             .HasIndex(x => x.DeletedAtUtc);

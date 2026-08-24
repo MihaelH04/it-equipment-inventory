@@ -12,7 +12,7 @@
         <a asp-action="Index" class="btn btn-outline-secondary">← Natrag na pregled</a>
     </div>
 
-    <form asp-action="Create" method="post" class="consumable-form-card">
+    <form asp-action="Create" method="post" enctype="multipart/form-data" class="consumable-form-card">
         <partial name="_Form" model="Model" />
         <div class="consumable-form-actions">
             <a asp-action="Index" class="btn btn-outline-secondary">Odustani</a>

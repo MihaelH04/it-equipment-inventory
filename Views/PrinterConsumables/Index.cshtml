@@ -1,15 +1,14 @@
 @using System.Text.Json
 @model IEnumerable<ITEquipmentInventory.Models.PrinterConsumable>
 @{
-    ViewData["Title"] = "Toneri i tinte";
+    ViewData["Title"] = "Toneri, tinte i održavanje";
+    var products = Model.ToList();
     var currentSearch = ViewBag.SearchString as string ?? string.Empty;
     var currentStatus = ViewBag.CurrentStatusFilter as string ?? string.Empty;
     var currentSort = ViewBag.CurrentSort as string ?? string.Empty;
     var printerSiteMapJson = ViewBag.PrinterSiteMapJson as string ?? "{}";
+    var printerOptionsJson = ViewBag.PrinterNameOptionsJson as string ?? "[]";
     var returnUrl = Context.Request.Path.ToString() + Context.Request.QueryString.ToString();
-
-    string NextSort(string key) => currentSort == key ? key + "_desc" : key;
-    string SortMark(string key) => currentSort == key ? "↑" : currentSort == key + "_desc" ? "↓" : "↕";
 
     string TypeText(ConsumableType type) => type switch
     {
@@ -18,331 +17,991 @@
         ConsumableType.KutijaZaOdrzavanje => "Kutija za održavanje",
         _ => "Ostalo"
     };
-    string ColorText(ConsumableColor color) => color switch
-    {
-        ConsumableColor.Crna => "Crna",
-        ConsumableColor.Cyan => "Cyan",
-        ConsumableColor.Magenta => "Magenta",
-        ConsumableColor.Zuta => "Žuta",
-        ConsumableColor.Visebojna => "Višebojna",
-        _ => "Nije primjenjivo"
-    };
+
+    string StateStatus(int available, int ordered) => available > 0
+        ? ordered > 0 ? $"Dostupno · dolazi još {ordered}" : "Dostupno"
+        : ordered > 0 ? "Naručeno" : "Nema";
+
+    string StateStatusClass(int available, int ordered) => available > 0
+        ? "status-success"
+        : ordered > 0 ? "status-warning" : "status-danger";
 }
 
-<div class="container-fluid py-4 admin-shell consumables-page">
+<div class="container-fluid py-4 admin-shell consumables-page consumables-gallery-page">
     <div class="consumables-page-header mb-4">
         <div>
             <span class="consumables-kicker">Kontrola zalihe</span>
             <h1 class="mb-1">Toneri, tinte i održavanje</h1>
-            <p class="text-muted mb-0">Pregled dostupnosti, narudžbi i potrošnje po printerima i radnim nalozima.</p>
+            <p class="text-muted mb-0">Klikni na proizvod, odmah pregledaj stanje i odaberi naručivanje, zaprimanje, uređivanje ili izdavanje.</p>
         </div>
         <div class="consumables-header-actions">
-            <a asp-action="History" class="btn btn-outline-primary">📊 Mjesečna evidencija</a>
+            <a asp-action="History" class="btn btn-outline-primary">Mjesečna evidencija</a>
             <a asp-action="ExportExcel"
                asp-route-searchString="@currentSearch"
                asp-route-statusFilter="@currentStatus"
                asp-route-sortOrder="@currentSort"
                class="btn btn-outline-success">Izvoz Excel</a>
-            <a asp-action="Create" class="btn btn-primary" data-add-new>＋ Dodaj artikl</a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createConsumableModal">＋ Dodaj proizvod</button>
         </div>
     </div>
 
     @if (TempData["Success"] != null)
     {
-        <div class="alert alert-success border-0 shadow-sm rounded-4 mb-4">@TempData["Success"]</div>
+        <div class="alert alert-success border-0 shadow-sm rounded-4 mb-4" role="status">@TempData["Success"]</div>
     }
     @if (TempData["Error"] != null)
     {
-        <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-4">@TempData["Error"]</div>
+        <div class="alert alert-danger border-0 shadow-sm rounded-4 mb-4" role="alert">@TempData["Error"]</div>
     }
 
     <div class="consumables-stats-grid consumables-stats-grid--four mb-4">
         <a asp-action="Index" class="consumables-stat-card consumables-stat-card--all @(string.IsNullOrEmpty(currentStatus) ? "is-selected" : "")">
-            <span class="consumables-stat-icon">🖨</span>
-            <span><strong>@ViewBag.TotalCount</strong><small>Ukupno artikala</small></span>
+            <span class="consumables-stat-icon" aria-hidden="true">▦</span>
+            <span><strong id="totalProductsCount">@ViewBag.TotalCount</strong><small>Ukupno proizvoda</small></span>
         </a>
         <a asp-action="Index" asp-route-statusFilter="Dostupno"
            class="consumables-stat-card consumables-stat-card--available @(currentStatus == "Dostupno" ? "is-selected" : "")">
-            <span class="consumables-stat-icon">✓</span>
-            <span><strong>@ViewBag.AvailableCount</strong><small>Dostupno</small></span>
+            <span class="consumables-stat-icon" aria-hidden="true">✓</span>
+            <span><strong id="availableProductsCount">@ViewBag.AvailableCount</strong><small>Dostupno</small></span>
         </a>
         <a asp-action="Index" asp-route-statusFilter="Naruceno"
            class="consumables-stat-card consumables-stat-card--ordered @(currentStatus == "Naruceno" ? "is-selected" : "")">
-            <span class="consumables-stat-icon">⏳</span>
-            <span><strong>@ViewBag.OrderedCount</strong><small>Naručeno</small></span>
+            <span class="consumables-stat-icon" aria-hidden="true">↻</span>
+            <span><strong id="orderedProductsCount">@ViewBag.OrderedCount</strong><small>Čeka zaprimanje</small></span>
         </a>
         <a asp-action="Index" asp-route-statusFilter="Nema"
            class="consumables-stat-card consumables-stat-card--missing @(currentStatus == "Nema" ? "is-selected" : "")">
-            <span class="consumables-stat-icon">!</span>
-            <span><strong>@ViewBag.MissingCount</strong><small>Nema na stanju</small></span>
+            <span class="consumables-stat-icon" aria-hidden="true">!</span>
+            <span><strong id="missingProductsCount">@ViewBag.MissingCount</strong><small>Nema na stanju</small></span>
         </a>
     </div>
 
     <form method="get" asp-action="Index" class="single-search-card mb-4" id="consumablesSearchForm">
         <input type="hidden" name="statusFilter" value="@currentStatus" />
         <input type="hidden" name="sortOrder" value="@currentSort" />
-        <input type="search" name="searchString" value="@currentSearch" class="form-control"
+        <div class="autocomplete-search-wrap consumables-main-search-wrap">
+        <input type="search" id="consumablesMainSearch" name="searchString" value="@currentSearch" class="form-control"
                data-main-search="true"
-               placeholder="Pretraži printer, radni nalog, naziv, šifru, vrstu, boju, original, zamjenski ili status..." />
+               autocomplete="off" placeholder="Pretraži naziv, šifru, vrstu, printer, stanje ili originalni/zamjenski proizvod..." />
+        <div id="consumablesMainSearchSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
+        </div>
         <button type="submit" class="btn btn-primary">Pretraži</button>
         <a asp-action="Index" asp-route-statusFilter="@currentStatus" class="btn btn-outline-secondary">Reset</a>
-        <span class="consumables-unit-summary ms-auto">Na stanju: <strong>@ViewBag.TotalAvailableUnits</strong> kom. &nbsp;•&nbsp; Dolazi: <strong>@ViewBag.TotalOrderedUnits</strong> kom.</span>
+        <span class="consumables-unit-summary ms-auto">Na stanju: <strong id="totalAvailableUnits">@ViewBag.TotalAvailableUnits</strong> &nbsp;•&nbsp; Naručeno: <strong id="totalOrderedUnits">@ViewBag.TotalOrderedUnits</strong></span>
     </form>
 
-    <div class="modern-table-wrap consumables-table-card">
-        @if (!Model.Any())
+    <div class="consumables-image-gallery" id="consumablesGallery">
+        @if (products.Count == 0)
         {
-            <div class="empty-state-modern">
-                <div class="consumables-empty-icon">🖨</div>
-                <div class="mt-2">Nema artikala koji odgovaraju pretrazi.</div>
+            <div class="empty-state-modern consumables-empty-state">
+                <div class="consumables-empty-icon" aria-hidden="true">▦</div>
+                <h3>Nema proizvoda</h3>
+                <p>Nema proizvoda koji odgovaraju odabranim kriterijima.</p>
             </div>
         }
         else
         {
-            <div class="table-responsive">
-                <table class="table modern-table consumables-table consumables-table-v2 mb-0">
-                    <thead>
-                        <tr>
-                            <th>
-                                <a asp-action="Index" asp-route-searchString="@currentSearch" asp-route-statusFilter="@currentStatus"
-                                   asp-route-sortOrder='@NextSort("printers")' class="sort-link">
-                                    Kompatibilni printeri <span>@SortMark("printers")</span>
-                                </a>
-                            </th>
-                            <th>
-                                <a asp-action="Index" asp-route-searchString="@currentSearch" asp-route-statusFilter="@currentStatus"
-                                   asp-route-sortOrder='@NextSort("name")' class="sort-link">
-                                    Artikl <span>@SortMark("name")</span>
-                                </a>
-                            </th>
-                            <th>
-                                <a asp-action="Index" asp-route-searchString="@currentSearch" asp-route-statusFilter="@currentStatus"
-                                   asp-route-sortOrder='@NextSort("type")' class="sort-link">
-                                    Vrsta <span>@SortMark("type")</span>
-                                </a>
-                            </th>
-                            <th>
-                                <a asp-action="Index" asp-route-searchString="@currentSearch" asp-route-statusFilter="@currentStatus"
-                                   asp-route-sortOrder='@NextSort("color")' class="sort-link">
-                                    Boja <span>@SortMark("color")</span>
-                                </a>
-                            </th>
-                            <th>
-                                <a asp-action="Index" asp-route-searchString="@currentSearch" asp-route-statusFilter="@currentStatus"
-                                   asp-route-sortOrder='@NextSort("original")' class="sort-link">
-                                    Proizvod <span>@SortMark("original")</span>
-                                </a>
-                            </th>
-                            <th>
-                                <a asp-action="Index" asp-route-searchString="@currentSearch" asp-route-statusFilter="@currentStatus"
-                                   asp-route-sortOrder='@NextSort("available")' class="sort-link">
-                                    Dostupno <span>@SortMark("available")</span>
-                                </a>
-                            </th>
-                            <th>
-                                <a asp-action="Index" asp-route-searchString="@currentSearch" asp-route-statusFilter="@currentStatus"
-                                   asp-route-sortOrder='@NextSort("ordered")' class="sort-link">
-                                    Naručeno <span>@SortMark("ordered")</span>
-                                </a>
-                            </th>
-                            <th>
-                                <a asp-action="Index" asp-route-searchString="@currentSearch" asp-route-statusFilter="@currentStatus"
-                                   asp-route-sortOrder='@NextSort("status")' class="sort-link">
-                                    Status <span>@SortMark("status")</span>
-                                </a>
-                            </th>
-                            <th class="text-end">Akcije</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach (var item in Model)
+            @for (var index = 0; index < products.Count; index++)
+            {
+                var item = products[index];
+                var states = item.ColorStates.Select(state => new
+                {
+                    colorValue = state.Color.ToString(),
+                    label = PrinterConsumable.GetColorDisplayName(state.Color),
+                    available = state.QuantityAvailable,
+                    ordered = state.QuantityOrdered,
+                    status = StateStatus(state.QuantityAvailable, state.QuantityOrdered),
+                    statusClass = StateStatusClass(state.QuantityAvailable, state.QuantityOrdered)
+                }).ToArray();
+                var pendingOrders = item.PendingOrders
+                    .Where(order => order.RemainingQuantity > 0)
+                    .GroupBy(order => order.OrderGroupId?.ToString() ?? $"legacy-{order.Id}")
+                    .OrderBy(group => group.Min(order => order.OrderedAt))
+                    .Select(group => new
                     {
-                        var printerNames = item.CompatiblePrinters.OrderBy(x => x.PrinterName).Select(x => x.PrinterName).ToArray();
-                        var printerJson = JsonSerializer.Serialize(printerNames);
-                        <tr>
-                            <td data-label="Printeri">
-                                <div class="compatible-printer-list">
-                                    @foreach (var printer in printerNames)
-                                    {
-                                        <span class="compatible-printer-chip">@printer</span>
-                                    }
-                                </div>
-                            </td>
-                            <td data-label="Artikl">
-                                <div class="primary-table-text">@item.Name</div>
-                                @if (!string.IsNullOrWhiteSpace(item.ProductCode))
-                                {
-                                    <small class="text-muted">Šifra: @item.ProductCode</small>
-                                }
-                            </td>
-                            <td data-label="Vrsta"><span class="badge rounded-pill text-bg-light">@TypeText(item.Type)</span></td>
-                            <td data-label="Boja">@ColorText(item.Color)</td>
-                            <td data-label="Proizvod">
-                                <span class="product-kind-badge @(item.IsOriginal ? "product-kind-original" : "product-kind-replacement")">
-                                    @(item.IsOriginal ? "Original" : "Zamjenski")
+                        id = group.First().Id,
+                        quantity = group.Sum(order => order.RemainingQuantity),
+                        orderedAt = group.Min(order => order.OrderedAt).ToString("dd.MM.yyyy. HH:mm"),
+                        items = group
+                            .OrderBy(order => order.Color)
+                            .Select(order => new
+                            {
+                                color = PrinterConsumable.GetColorDisplayName(order.Color),
+                                quantity = order.RemainingQuantity
+                            })
+                            .ToArray()
+                    }).ToArray();
+                var productData = new
+                {
+                    id = item.Id,
+                    name = item.Name,
+                    code = item.ProductCode,
+                    type = TypeText(item.Type),
+                    typeValue = item.Type.ToString(),
+                    usesColors = item.UsesStandardColors,
+                    isOriginal = item.IsOriginal,
+                    imageUrl = item.ImageUrl,
+                    available = item.QuantityAvailable,
+                    ordered = item.QuantityOrdered,
+                    printers = item.CompatiblePrinters.Select(x => x.PrinterName).Distinct().OrderBy(x => x).ToArray(),
+                    states,
+                    pendingOrders
+                };
+
+                <article class="consumable-image-card" data-product-card>
+                    <button type="button"
+                            class="consumable-image-card-button"
+                            data-product-id="@item.Id"
+                            aria-label="Otvori radnje za @item.Name"
+                            title="@item.Name"
+                            data-bs-toggle="modal"
+                            data-bs-target="#actionModal">
+                        <span class="consumable-image-card-title">@item.Name</span>
+                        <span class="consumable-image-card-media">
+                            @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                            {
+                                <img src="@item.ImageUrl" alt="@item.Name" loading="lazy" />
+                            }
+                            else
+                            {
+                                <span class="consumable-image-card-empty" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" role="img">
+                                        <path d="M6 3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Zm0 2a1 1 0 0 0-1 1v8.2l3.3-3.3a2 2 0 0 1 2.8 0l2 2 1.3-1.3a2 2 0 0 1 2.8 0L19 13.4V6a1 1 0 0 0-1-1H6Zm13 11.2-3.2-3.2-2.7 2.7-3.4-3.4L5 17v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1.8ZM8 7a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z" />
+                                    </svg>
                                 </span>
-                            </td>
-                            <td data-label="Dostupno"><strong class="quantity-big quantity-available">@item.QuantityAvailable</strong></td>
-                            <td data-label="Naručeno"><strong class="quantity-big quantity-ordered">@item.QuantityOrdered</strong></td>
-                            <td data-label="Status">
-                                <span class="status-badge @item.AvailabilityStatusCssClass">@item.AvailabilityStatusText</span>
-                            </td>
-                            <td data-label="Akcije">
-                                <div class="consumable-actions justify-content-end">
-                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Uredi</a>
-                                    <button type="button" class="btn btn-sm btn-warning js-order-item"
-                                            data-bs-toggle="modal" data-bs-target="#orderModal"
-                                            data-item-id="@item.Id" data-item-name="@item.Name">Naruči</button>
-                                    @if (item.QuantityOrdered > 0)
-                                    {
-                                        <button type="button" class="btn btn-sm btn-success js-receive-item"
-                                                data-bs-toggle="modal" data-bs-target="#receiveModal"
-                                                data-item-id="@item.Id" data-item-name="@item.Name" data-item-max="@item.QuantityOrdered">Zaprimi</button>
-                                    }
-                                    @if (item.QuantityAvailable > 0)
-                                    {
-                                        <button type="button" class="btn btn-sm btn-primary js-use-item"
-                                                data-bs-toggle="modal" data-bs-target="#useModal"
-                                                data-item-id="@item.Id" data-item-name="@item.Name" data-item-max="@item.QuantityAvailable"
-                                                data-printers-json="@printerJson">Izdaj</button>
-                                    }
-                                    <form asp-action="Delete" method="post" class="d-inline"
-                                          onsubmit="return confirm('Obrisati ovaj artikl? Moći će se vratiti iz Nedavno obrisano tijekom 30 dana.');">
-                                        <input type="hidden" name="id" value="@item.Id" />
-                                        <input type="hidden" name="returnUrl" value="@returnUrl" />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Obriši</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
+                            }
+                        </span>
+                    </button>
+                    <script type="application/json" id="productData-@item.Id">@Html.Raw(JsonSerializer.Serialize(productData))</script>
+                </article>
+            }
         }
     </div>
 </div>
 
 <script type="application/json" id="printerSiteMapJson">@Html.Raw(printerSiteMapJson)</script>
+<script type="application/json" id="printerOptionsJson">@Html.Raw(printerOptionsJson)</script>
 
-<div class="modal fade" id="orderModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-        <form asp-action="Order" method="post">
-            <div class="modal-header"><h2 class="modal-title fs-5">Nova narudžba</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+<div class="modal fade modal-modern consumable-action-modal" id="actionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5 fw-bold mb-1" id="actionModalTitle">Odaberite radnju</h2>
+                    <div class="text-muted small" id="actionModalSubtitle"></div>
+                </div>
+                <button type="button" class="btn btn-outline-danger consumable-action-delete" id="deleteProductButton">Obriši</button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zatvori"></button>
+            </div>
+            <div class="modal-body">
+                <div class="selected-product-panel">
+                    <div class="selected-product-image" id="actionModalImage"></div>
+                    <div class="selected-product-copy">
+                        <div class="selected-product-name" id="actionModalName"></div>
+                        <div class="selected-product-meta" id="actionModalMeta"></div>
+                    </div>
+                </div>
+
+                <section class="action-current-status" aria-labelledby="actionCurrentStatusTitle">
+                    <div class="action-current-status-heading">
+                        <h3 id="actionCurrentStatusTitle">Trenutačno stanje</h3>
+                        <span>Dostupna i naručena količina</span>
+                    </div>
+                    <div class="consumable-status-list" id="actionStatusBody"></div>
+                    <div class="consumable-status-totals mt-3">
+                        <span>Dostupno ukupno <strong id="actionStatusTotalAvailable">0</strong></span>
+                        <span>Naručeno ukupno <strong id="actionStatusTotalOrdered">0</strong></span>
+                    </div>
+                </section>
+
+                <div class="action-grid action-grid--four mt-4">
+                    <button type="button" class="action-grid-btn action-grid-btn--warning" data-open-modal="#orderModal"><span>＋</span>Naruči</button>
+                    <button type="button" class="action-grid-btn action-grid-btn--success" data-open-modal="#receiveModal"><span>↓</span>Zaprimi</button>
+                    <button type="button" class="action-grid-btn action-grid-btn--primary" data-open-modal="#editModal"><span>✎</span>Uredi karticu</button>
+                    <button type="button" class="action-grid-btn action-grid-btn--accent" data-open-modal="#useModal"><span>→</span>Izdaj</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade modal-modern" id="createConsumableModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <form asp-action="Create" method="post" enctype="multipart/form-data" id="createConsumableForm" class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5 fw-bold mb-1">Dodaj novi proizvod</h2>
+                    <div class="text-muted small">Boja se ne unosi ovdje. Za toner i tintu stanje po bojama vodi se kroz naručivanje, zaprimanje i izdavanje.</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zatvori"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-lg-7">
+                        <label class="form-label" for="createName">Naziv proizvoda</label>
+                        <input class="form-control" id="createName" name="Name" maxlength="150" placeholder="Primjer: Epson 103" required />
+                    </div>
+                    <div class="col-lg-5">
+                        <label class="form-label" for="createProductCode">Šifra artikla / proizvoda</label>
+                        <input class="form-control" id="createProductCode" name="ProductCode" maxlength="100" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="createType">Vrsta proizvoda</label>
+                        <select class="form-select" id="createType" name="Type">
+                            <option value="Toner">Toner</option>
+                            <option value="Tinta">Tinta</option>
+                            <option value="KutijaZaOdrzavanje">Kutija za održavanje</option>
+                            <option value="Ostalo">Ostalo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="form-check form-switch consumable-switch-field w-100">
+                            <input class="form-check-input" type="checkbox" id="createIsOriginal" name="IsOriginal" value="true" checked />
+                            <input type="hidden" name="IsOriginal" value="false" />
+                            <label class="form-check-label" for="createIsOriginal" data-original-label>Originalni proizvod</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="createImage">Slika proizvoda</label>
+                        <input class="form-control" id="createImage" name="ProductImage" type="file" accept="image/jpeg,image/png,image/webp" />
+                    </div>
+                    <div class="col-md-6" data-initial-stock-field>
+                        <label class="form-label" for="createQuantityAvailable">Trenutačno dostupno</label>
+                        <input class="form-control" id="createQuantityAvailable" name="QuantityAvailable" type="number" min="0" max="100000" value="0" />
+                    </div>
+                    <div class="col-md-6" data-initial-stock-field>
+                        <label class="form-label" for="createQuantityOrdered">Već naručeno</label>
+                        <input class="form-control" id="createQuantityOrdered" name="QuantityOrdered" type="number" min="0" max="100000" value="0" />
+                    </div>
+                    <div class="col-12">
+                        <div class="consumable-color-info" id="createColorStockInfo">
+                            Za toner i tintu početno stanje po bojama postavlja se kroz <strong>Naruči → Zaprimi</strong>. Time se izbjegava ručno stvaranje zasebnih proizvoda Cyan, Magenta, Yellow i Black.
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Kompatibilni printeri iz baze</label>
+                        <div class="printer-multi-picker" id="createPrinterPicker" data-printer-picker>
+                            <div class="printer-picker-selected" data-selected></div>
+                            <div class="printer-picker-input-row">
+                                <input type="search" class="form-control printer-picker-search" data-search placeholder="Pretraži postojeće printere" autocomplete="off" />
+                                <button type="button" class="btn btn-primary printer-picker-add" data-add aria-label="Dodaj odabrani printer">＋</button>
+                            </div>
+                            <div class="printer-picker-dropdown" data-dropdown></div>
+                        </div>
+                        <textarea class="d-none" id="createCompatiblePrintersText" name="CompatiblePrintersText" data-printer-hidden></textarea>
+                        <div class="form-text">Odaberi printer iz rezultata i klikni „+“. Možeš dodati više printera i ukloniti pogrešan odabir.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Odustani</button>
+                <button type="submit" class="btn btn-primary">Spremi proizvod</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade modal-modern" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <form asp-action="Edit" method="post" enctype="multipart/form-data" id="editConsumableForm" class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5 fw-bold mb-1">Uredi karticu</h2>
+                    <div class="text-muted small" id="editModalSubtitle"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zatvori"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="Id" id="editId" />
+                <div class="row g-3">
+                    <div class="col-lg-7">
+                        <label class="form-label" for="editName">Naziv proizvoda</label>
+                        <input class="form-control" id="editName" name="Name" maxlength="150" required />
+                    </div>
+                    <div class="col-lg-5">
+                        <label class="form-label" for="editProductCode">Šifra artikla / proizvoda</label>
+                        <input class="form-control" id="editProductCode" name="ProductCode" maxlength="100" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="editType">Vrsta proizvoda</label>
+                        <select class="form-select" id="editType" name="Type">
+                            <option value="Toner">Toner</option>
+                            <option value="Tinta">Tinta</option>
+                            <option value="KutijaZaOdrzavanje">Kutija za održavanje</option>
+                            <option value="Ostalo">Ostalo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="form-check form-switch consumable-switch-field w-100">
+                            <input class="form-check-input" type="checkbox" id="editIsOriginal" name="IsOriginal" value="true" />
+                            <input type="hidden" name="IsOriginal" value="false" />
+                            <label class="form-check-label" for="editIsOriginal" data-original-label>Zamjenski proizvod</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="editImage">Nova slika proizvoda</label>
+                        <input class="form-control" id="editImage" name="ProductImage" type="file" accept="image/jpeg,image/png,image/webp" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Kompatibilni printeri iz baze</label>
+                        <div class="printer-multi-picker" id="editPrinterPicker" data-printer-picker>
+                            <div class="printer-picker-selected" data-selected></div>
+                            <div class="printer-picker-input-row">
+                                <input type="search" class="form-control printer-picker-search" data-search placeholder="Pretraži postojeće printere" autocomplete="off" />
+                                <button type="button" class="btn btn-primary printer-picker-add" data-add aria-label="Dodaj odabrani printer">＋</button>
+                            </div>
+                            <div class="printer-picker-dropdown" data-dropdown></div>
+                        </div>
+                        <textarea class="d-none" id="editCompatiblePrintersText" name="CompatiblePrintersText" data-printer-hidden></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-back-to-actions>← Natrag</button>
+                <button type="submit" class="btn btn-primary">Spremi promjene</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form asp-action="Delete" method="post" id="deleteProductForm" class="d-none">
+    <input type="hidden" name="id" id="deleteProductId" />
+    <input type="hidden" name="returnUrl" value="@returnUrl" />
+</form>
+
+<div class="modal fade modal-modern" id="orderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form asp-action="Order" method="post" class="modal-content" id="orderForm">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5 fw-bold mb-1">Naruči proizvod</h2>
+                    <div class="text-muted small" id="orderModalSubtitle"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zatvori"></button>
+            </div>
             <div class="modal-body">
                 <input type="hidden" name="id" id="orderItemId" />
                 <input type="hidden" name="returnUrl" value="@returnUrl" />
-                <p>Artikl: <strong id="orderItemName"></strong></p>
-                <label for="orderQuantity" class="form-label">Količina za naručiti</label>
-                <input id="orderQuantity" name="quantity" type="number" min="1" max="100000" value="1" class="form-control" required />
+                <div class="consumable-color-grid" id="orderColorGrid"></div>
+                <input type="hidden" id="orderCyanQuantity" name="cyanQuantity" value="0" />
+                <input type="hidden" id="orderMagentaQuantity" name="magentaQuantity" value="0" />
+                <input type="hidden" id="orderYellowQuantity" name="yellowQuantity" value="0" />
+                <input type="hidden" id="orderBlackQuantity" name="blackQuantity" value="0" />
+                <input type="hidden" id="orderTotalQuantity" name="totalQuantity" value="0" />
+                <div class="form-text mt-3">Količina može biti od 0 do 99. Stavke s količinom 0 neće se spremiti.</div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Odustani</button><button class="btn btn-warning" type="submit">Spremi narudžbu</button></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-back-to-actions>← Natrag</button>
+                <button class="btn btn-warning" type="submit">Naruči</button>
+            </div>
         </form>
-    </div></div>
+    </div>
 </div>
 
-<div class="modal fade" id="receiveModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-        <form asp-action="Receive" method="post">
-            <div class="modal-header"><h2 class="modal-title fs-5">Zaprimi artikl</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+<div class="modal fade modal-modern" id="receiveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form asp-action="Receive" method="post" class="modal-content" id="receiveForm">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5 fw-bold mb-1">Zaprimi naručene proizvode</h2>
+                    <div class="text-muted small" id="receiveModalSubtitle"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zatvori"></button>
+            </div>
             <div class="modal-body">
-                <input type="hidden" name="id" id="receiveItemId" />
+                <input type="hidden" name="orderId" id="receiveOrderId" />
                 <input type="hidden" name="returnUrl" value="@returnUrl" />
-                <p>Artikl: <strong id="receiveItemName"></strong></p>
-                <p class="text-muted">Trenutno naručeno: <strong id="receiveMaxText"></strong> kom.</p>
-                <label for="receiveQuantity" class="form-label">Zaprimljena količina</label>
-                <input id="receiveQuantity" name="quantity" type="number" min="1" max="100000" value="1" class="form-control" required />
+                <div id="receiveFeedback" class="alert d-none mb-3" role="status"></div>
+                <div id="receivePendingList" class="receive-pending-list"></div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Odustani</button><button class="btn btn-success" type="submit">Zaprimi</button></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-back-to-actions>← Natrag</button>
+            </div>
         </form>
-    </div></div>
+    </div>
 </div>
 
-<div class="modal fade" id="useModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-        <form asp-action="Use" method="post">
-            <div class="modal-header"><h2 class="modal-title fs-5">Izdaj sa stanja</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+<div class="modal fade modal-modern" id="useModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <form asp-action="Use" method="post" class="modal-content" id="useForm">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5 fw-bold mb-1">Izdaj sa stanja</h2>
+                    <div class="text-muted small" id="useModalSubtitle"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zatvori"></button>
+            </div>
             <div class="modal-body">
                 <input type="hidden" name="id" id="useItemId" />
                 <input type="hidden" name="returnUrl" value="@returnUrl" />
-                <p>Artikl: <strong id="useItemName"></strong></p>
-                <p class="text-muted">Trenutno dostupno: <strong id="useMaxText"></strong> kom.</p>
-                <div class="mb-3">
-                    <label for="useQuantity" class="form-label">Izdana / potrošena količina</label>
-                    <input id="useQuantity" name="quantity" type="number" min="1" max="100000" value="1" class="form-control" required />
-                </div>
+                <div class="consumable-color-grid mb-4" id="useColorGrid"></div>
+                <input type="hidden" id="useCyanQuantity" name="cyanQuantity" value="0" />
+                <input type="hidden" id="useMagentaQuantity" name="magentaQuantity" value="0" />
+                <input type="hidden" id="useYellowQuantity" name="yellowQuantity" value="0" />
+                <input type="hidden" id="useBlackQuantity" name="blackQuantity" value="0" />
+                <input type="hidden" id="useTotalQuantity" name="totalQuantity" value="0" />
                 <div class="mb-3">
                     <label for="usePrinterName" class="form-label">Za koji printer se izdaje?</label>
                     <select id="usePrinterName" name="printerName" class="form-select" required></select>
-                    <div class="form-text">Prikazuju se samo printeri spremljeni uz odabrani artikl.</div>
+                    <div class="form-text">Prikazuju se samo printeri povezani s odabranim proizvodom.</div>
                 </div>
                 <div class="mb-0">
                     <label for="useSiteId" class="form-label">Na koji radni nalog / lokaciju ide?</label>
                     <select id="useSiteId" name="siteId" class="form-select" required></select>
-                    <div class="form-text">Nakon odabira printera prikazuju se samo radni nalozi na kojima se taj printer nalazi u opremi.</div>
+                    <div class="form-text">Nakon odabira printera prikazuju se samo njegovi povezani radni nalozi ili lokacije.</div>
                 </div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Odustani</button><button class="btn btn-primary" type="submit">Skini sa stanja</button></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-back-to-actions>← Natrag</button>
+                <button class="btn btn-primary" type="submit">Skini sa stanja</button>
+            </div>
         </form>
-    </div></div>
+    </div>
 </div>
 
 @section Scripts {
 <script>
-(function () {
-    const printerSiteMap = JSON.parse(document.getElementById('printerSiteMapJson')?.textContent || '{}');
+    setupRemoteEntityAutocomplete(
+        'consumablesMainSearch',
+        null,
+        'consumablesMainSearchSuggestions',
+        '@Html.Raw(Url.Action("SearchConsumableSuggestions", "PrinterConsumables", new { statusFilter = currentStatus }))',
+        {
+            minLength: 2,
+            debounceMs: 300,
+            onSelect: function () {
+                document.getElementById('consumablesSearchForm').requestSubmit();
+            }
+        }
+    );
 
-    document.querySelectorAll('.js-order-item').forEach(btn => btn.addEventListener('click', () => {
-        document.getElementById('orderItemId').value = btn.dataset.itemId;
-        document.getElementById('orderItemName').textContent = btn.dataset.itemName;
-        document.getElementById('orderQuantity').value = 1;
-    }));
+(() => {
+    'use strict';
 
-    document.querySelectorAll('.js-receive-item').forEach(btn => btn.addEventListener('click', () => {
-        const max = btn.dataset.itemMax || 1;
-        document.getElementById('receiveItemId').value = btn.dataset.itemId;
-        document.getElementById('receiveItemName').textContent = btn.dataset.itemName;
-        document.getElementById('receiveMaxText').textContent = max;
-        const input = document.getElementById('receiveQuantity');
-        input.max = max;
-        input.value = max;
-    }));
+    const byId = id => document.getElementById(id);
+    const parseScriptJson = (id, fallback) => {
+        try { return JSON.parse(byId(id)?.textContent || ''); }
+        catch { return fallback; }
+    };
 
-    function fillSiteOptions(printerName) {
-        const siteSelect = document.getElementById('useSiteId');
-        siteSelect.innerHTML = '';
-        const sites = printerSiteMap[printerName] || [];
-        if (sites.length === 0) {
-            const opt = new Option('Nema pronađenih radnih naloga za taj printer', '', true, true);
-            opt.disabled = true;
-            siteSelect.add(opt);
+    const printerSiteMap = parseScriptJson('printerSiteMapJson', {});
+    const printerOptions = parseScriptJson('printerOptionsJson', []);
+    const actionModal = byId('actionModal');
+    let currentProduct = null;
+    let activeReceiveButton = null;
+
+    const hiddenInputs = {
+        order: {
+            Cyan: byId('orderCyanQuantity'),
+            Magenta: byId('orderMagentaQuantity'),
+            Zuta: byId('orderYellowQuantity'),
+            Crna: byId('orderBlackQuantity'),
+            NijePrimjenjivo: byId('orderTotalQuantity')
+        },
+        use: {
+            Cyan: byId('useCyanQuantity'),
+            Magenta: byId('useMagentaQuantity'),
+            Zuta: byId('useYellowQuantity'),
+            Crna: byId('useBlackQuantity'),
+            NijePrimjenjivo: byId('useTotalQuantity')
+        }
+    };
+
+    function normalize(value) {
+        return String(value || '').trim().replace(/\s+/g, ' ');
+    }
+
+    function escapeText(value) {
+        const element = document.createElement('span');
+        element.textContent = String(value ?? '');
+        return element.innerHTML;
+    }
+
+    class PrinterPicker {
+        constructor(root) {
+            this.root = root;
+            this.search = root.querySelector('[data-search]');
+            this.dropdown = root.querySelector('[data-dropdown]');
+            this.selectedWrap = root.querySelector('[data-selected]');
+            this.addButton = root.querySelector('[data-add]');
+            this.hidden = root.parentElement.querySelector('[data-printer-hidden]');
+            this.selected = [];
+            this.highlighted = null;
+            this.bind();
+            this.render();
+        }
+
+        has(value) {
+            const normalized = normalize(value).toLocaleLowerCase('hr-HR');
+            return this.selected.some(item => normalize(item).toLocaleLowerCase('hr-HR') === normalized);
+        }
+
+        set(values) {
+            this.selected = [];
+            (values || []).forEach(value => {
+                const clean = normalize(value);
+                if (clean && !this.has(clean) && printerOptions.some(option => option.toLocaleLowerCase('hr-HR') === clean.toLocaleLowerCase('hr-HR')))
+                    this.selected.push(clean);
+            });
+            this.highlighted = null;
+            this.search.value = '';
+            this.render();
+        }
+
+        add(value) {
+            const clean = normalize(value || this.highlighted);
+            const exact = printerOptions.find(option => option.toLocaleLowerCase('hr-HR') === clean.toLocaleLowerCase('hr-HR'));
+            if (!exact || this.has(exact)) return;
+            this.selected.push(exact);
+            this.highlighted = null;
+            this.search.value = '';
+            this.render();
+            this.search.focus();
+        }
+
+        remove(value) {
+            this.selected = this.selected.filter(item => item.toLocaleLowerCase('hr-HR') !== value.toLocaleLowerCase('hr-HR'));
+            this.render();
+        }
+
+        bind() {
+            this.search.addEventListener('focus', () => {
+                this.root.classList.add('is-open');
+                this.renderDropdown();
+            });
+            this.search.addEventListener('input', () => {
+                this.highlighted = null;
+                this.root.classList.add('is-open');
+                this.renderDropdown();
+            });
+            this.search.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    this.add();
+                }
+            });
+            this.addButton.addEventListener('click', () => this.add());
+            document.addEventListener('pointerdown', event => {
+                if (!this.root.contains(event.target)) this.root.classList.remove('is-open');
+            });
+        }
+
+        render() {
+            this.selectedWrap.innerHTML = '';
+            if (this.selected.length === 0) {
+                const empty = document.createElement('span');
+                empty.className = 'printer-picker-empty';
+                empty.textContent = 'Nije odabran nijedan printer';
+                this.selectedWrap.appendChild(empty);
+            } else {
+                this.selected.forEach(name => {
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'printer-picker-chip';
+                    chip.innerHTML = `<span>${escapeText(name)}</span><b aria-hidden="true">×</b>`;
+                    chip.setAttribute('aria-label', `Ukloni ${name}`);
+                    chip.addEventListener('click', () => this.remove(name));
+                    this.selectedWrap.appendChild(chip);
+                });
+            }
+            this.hidden.value = this.selected.join('\n');
+            this.renderDropdown();
+        }
+
+        renderDropdown() {
+            const query = normalize(this.search.value).toLocaleLowerCase('hr-HR');
+            const matches = printerOptions
+                .filter(option => !this.has(option))
+                .filter(option => !query || option.toLocaleLowerCase('hr-HR').includes(query))
+                .slice(0, 15);
+
+            this.dropdown.innerHTML = '';
+            if (matches.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'printer-picker-option is-empty';
+                empty.textContent = printerOptions.length === 0 ? 'U bazi nema printera.' : 'Nema rezultata.';
+                this.dropdown.appendChild(empty);
+                this.highlighted = null;
+                return;
+            }
+
+            if (!this.highlighted || !matches.includes(this.highlighted)) this.highlighted = matches[0];
+            matches.forEach(name => {
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.className = `printer-picker-option${name === this.highlighted ? ' is-highlighted' : ''}`;
+                option.innerHTML = `<span>${escapeText(name)}</span><strong aria-hidden="true">＋</strong>`;
+                option.addEventListener('pointerdown', event => event.preventDefault());
+                option.addEventListener('click', () => this.add(name));
+                this.dropdown.appendChild(option);
+            });
+        }
+    }
+
+    const createPicker = new PrinterPicker(byId('createPrinterPicker'));
+    const editPicker = new PrinterPicker(byId('editPrinterPicker'));
+
+    function syncOriginalSwitch(input) {
+        const label = input.closest('.consumable-switch-field')?.querySelector('[data-original-label]');
+        if (label) label.textContent = input.checked ? 'Originalni proizvod' : 'Zamjenski proizvod';
+    }
+
+    document.querySelectorAll('#createIsOriginal, #editIsOriginal').forEach(input => {
+        input.addEventListener('change', () => syncOriginalSwitch(input));
+        syncOriginalSwitch(input);
+    });
+
+    function syncCreateStockFields() {
+        const type = byId('createType').value;
+        const usesColors = type === 'Toner' || type === 'Tinta';
+        const available = byId('createQuantityAvailable');
+        const ordered = byId('createQuantityOrdered');
+        document.querySelectorAll('[data-initial-stock-field]').forEach(field => field.classList.toggle('is-disabled', usesColors));
+        byId('createColorStockInfo').classList.toggle('d-none', !usesColors);
+        available.disabled = usesColors;
+        ordered.disabled = usesColors;
+        if (usesColors) {
+            available.value = '0';
+            ordered.value = '0';
+        }
+    }
+
+    byId('createType').addEventListener('change', syncCreateStockFields);
+    byId('createConsumableModal').addEventListener('show.bs.modal', () => {
+        createPicker.set([]);
+        byId('createConsumableForm').reset();
+        byId('createIsOriginal').checked = true;
+        syncOriginalSwitch(byId('createIsOriginal'));
+        syncCreateStockFields();
+    });
+    syncCreateStockFields();
+
+    function loadProduct(id) {
+        currentProduct = parseScriptJson(`productData-${id}`, null);
+        if (!currentProduct) return;
+
+        byId('actionModalTitle').textContent = `${currentProduct.name} – odaberite radnju`;
+        byId('actionModalSubtitle').textContent = currentProduct.code ? `Šifra: ${currentProduct.code}` : 'Bez upisane šifre artikla';
+        byId('actionModalName').textContent = currentProduct.name;
+        byId('actionModalMeta').textContent = `${currentProduct.type} · ${currentProduct.isOriginal ? 'Originalni proizvod' : 'Zamjenski proizvod'}`;
+        byId('actionModalImage').innerHTML = currentProduct.imageUrl
+            ? `<img src="${escapeText(currentProduct.imageUrl)}" alt="" />`
+            : '<span class="selected-product-placeholder" aria-hidden="true">▦</span>';
+
+        byId('editId').value = currentProduct.id;
+        byId('editName').value = currentProduct.name || '';
+        byId('editProductCode').value = currentProduct.code || '';
+        byId('editImage').value = '';
+        byId('editType').value = currentProduct.typeValue;
+        byId('editIsOriginal').checked = !!currentProduct.isOriginal;
+        syncOriginalSwitch(byId('editIsOriginal'));
+        editPicker.set(currentProduct.printers || []);
+        byId('editModalSubtitle').textContent = currentProduct.name;
+
+        byId('deleteProductId').value = currentProduct.id;
+        byId('receiveOrderId').value = '';
+        setReceiveFeedback('', 'success');
+        byId('orderItemId').value = currentProduct.id;
+        byId('useItemId').value = currentProduct.id;
+        byId('orderModalSubtitle').textContent = currentProduct.name;
+        byId('receiveModalSubtitle').textContent = currentProduct.name;
+        byId('useModalSubtitle').textContent = currentProduct.name;
+
+        renderStatus();
+        renderOrderSteppers();
+        renderUseSteppers();
+        renderPendingOrders();
+        renderUsePrinters();
+    }
+
+    document.querySelectorAll('[data-product-id]').forEach(button => {
+        button.addEventListener('click', () => loadProduct(button.dataset.productId));
+    });
+
+    function colorClass(colorValue) {
+        switch (colorValue) {
+            case 'Cyan': return 'consumable-stepper--cyan';
+            case 'Magenta': return 'consumable-stepper--magenta';
+            case 'Zuta': return 'consumable-stepper--yellow';
+            case 'Crna': return 'consumable-stepper--black';
+            default: return 'consumable-stepper--neutral';
+        }
+    }
+
+    function stateFor(colorValue) {
+        return currentProduct?.states?.find(state => state.colorValue === colorValue) || { available: 0, ordered: 0 };
+    }
+
+    function buildStepper(container, mode, colorValue, label, maximum, helperText) {
+        const wrapper = document.createElement('div');
+        wrapper.className = `consumable-stepper ${colorClass(colorValue)}`;
+        wrapper.innerHTML = `
+            <div class="consumable-stepper-copy">
+                <div class="consumable-stepper-label">${escapeText(label)}</div>
+                ${helperText ? `<small>${escapeText(helperText)}</small>` : ''}
+            </div>
+            <div class="consumable-stepper-control">
+                <button type="button" class="consumable-stepper-btn" data-minus aria-label="Smanji">−</button>
+                <input type="number" class="consumable-stepper-input" min="0" max="${maximum}" value="0" inputmode="numeric" />
+                <button type="button" class="consumable-stepper-btn" data-plus aria-label="Povećaj">＋</button>
+            </div>`;
+
+        const input = wrapper.querySelector('input');
+        const hidden = hiddenInputs[mode][colorValue];
+        const setValue = value => {
+            const bounded = Math.max(0, Math.min(maximum, Number.parseInt(value, 10) || 0));
+            input.value = String(bounded);
+            hidden.value = String(bounded);
+        };
+        wrapper.querySelector('[data-minus]').addEventListener('click', () => setValue(Number(input.value) - 1));
+        wrapper.querySelector('[data-plus]').addEventListener('click', () => setValue(Number(input.value) + 1));
+        input.addEventListener('input', () => setValue(input.value));
+        setValue(0);
+        container.appendChild(wrapper);
+    }
+
+    function resetHidden(mode) {
+        Object.values(hiddenInputs[mode]).forEach(input => { input.value = '0'; });
+    }
+
+    function renderOrderSteppers() {
+        const container = byId('orderColorGrid');
+        container.innerHTML = '';
+        resetHidden('order');
+        if (!currentProduct) return;
+
+        if (currentProduct.usesColors) {
+            [
+                ['Cyan', 'C – Cyan'],
+                ['Magenta', 'M – Magenta'],
+                ['Zuta', 'Y – Yellow'],
+                ['Crna', 'K – Black']
+            ].forEach(([value, label]) => buildStepper(container, 'order', value, label, 99, `Naručeno: ${stateFor(value).ordered}`));
+        } else {
+            buildStepper(container, 'order', 'NijePrimjenjivo', 'Ukupna količina', 99, `Naručeno: ${currentProduct.ordered}`);
+        }
+    }
+
+    function renderUseSteppers() {
+        const container = byId('useColorGrid');
+        container.innerHTML = '';
+        resetHidden('use');
+        if (!currentProduct) return;
+
+        if (currentProduct.usesColors) {
+            [
+                ['Cyan', 'C – Cyan'],
+                ['Magenta', 'M – Magenta'],
+                ['Zuta', 'Y – Yellow'],
+                ['Crna', 'K – Black']
+            ].forEach(([value, label]) => {
+                const available = stateFor(value).available;
+                buildStepper(container, 'use', value, label, Math.min(99, available), `Dostupno: ${available}`);
+            });
+        } else {
+            buildStepper(container, 'use', 'NijePrimjenjivo', 'Ukupna količina', Math.min(99, currentProduct.available), `Dostupno: ${currentProduct.available}`);
+        }
+    }
+
+    function renderStatus() {
+        const body = byId('actionStatusBody');
+        body.innerHTML = '';
+        if (!currentProduct) return;
+
+        (currentProduct.states || []).forEach(state => {
+            const available = Number(state.available) || 0;
+            const ordered = Number(state.ordered) || 0;
+            const status = state.status || (available > 0
+                ? ordered > 0 ? `Dostupno · dolazi još ${ordered}` : 'Dostupno'
+                : ordered > 0 ? 'Naručeno' : 'Nema');
+            const statusClass = state.statusClass || (available > 0
+                ? 'status-success'
+                : ordered > 0 ? 'status-warning' : 'status-danger');
+            const row = document.createElement('div');
+            row.className = `consumable-status-row ${colorClass(state.colorValue)}`;
+            row.innerHTML = `
+                <div>
+                    <strong>${escapeText(state.label)}</strong>
+                    <span class="status-badge ${escapeText(statusClass)}">${escapeText(status)}</span>
+                </div>
+                <div class="consumable-status-values">
+                    <span><small>Dostupno</small><b>${available}</b></span>
+                    <span><small>Naručeno</small><b>${ordered}</b></span>
+                </div>`;
+            body.appendChild(row);
+        });
+        byId('actionStatusTotalAvailable').textContent = currentProduct.available;
+        byId('actionStatusTotalOrdered').textContent = currentProduct.ordered;
+    }
+
+    function renderPendingOrders() {
+        const list = byId('receivePendingList');
+        list.innerHTML = '';
+        if (!currentProduct || !currentProduct.pendingOrders?.length) {
+            list.innerHTML = '<div class="consumable-empty-inline">Nema narudžbi koje čekaju zaprimanje.</div>';
             return;
         }
-        sites.forEach(site => {
-            const text = site.count && site.count > 1 ? `${site.siteName} (${site.count} printera)` : site.siteName;
-            siteSelect.add(new Option(text, site.siteId));
+
+        currentProduct.pendingOrders.forEach(order => {
+            const row = document.createElement('div');
+            row.className = 'receive-pending-row';
+            const itemSummary = (order.items || [])
+                .map(item => `${escapeText(item.color)}: ${item.quantity} kom.`)
+                .join(' · ');
+            row.innerHTML = `
+                <div class="receive-pending-copy">
+                    <div class="receive-pending-title">Jedna narudžba · ${order.quantity} kom. ukupno</div>
+                    <div class="receive-pending-meta">${itemSummary}</div>
+                    <div class="receive-pending-date">Naručeno: ${escapeText(order.orderedAt)}</div>
+                </div>
+                <button type="button" class="btn btn-success">Zaprimi cijelu narudžbu</button>`;
+            const receiveButton = row.querySelector('button');
+            receiveButton.addEventListener('click', () => {
+                byId('receiveOrderId').value = order.id;
+                receiveButton.dataset.originalText = receiveButton.textContent;
+                receiveButton.disabled = true;
+                receiveButton.textContent = 'Zaprimam…';
+                activeReceiveButton = receiveButton;
+                byId('receiveForm').requestSubmit();
+            });
+            list.appendChild(row);
         });
     }
 
-    document.querySelectorAll('.js-use-item').forEach(btn => btn.addEventListener('click', () => {
-        const max = btn.dataset.itemMax || 1;
-        const printers = JSON.parse(btn.dataset.printersJson || '[]');
-        const printerSelect = document.getElementById('usePrinterName');
-        document.getElementById('useItemId').value = btn.dataset.itemId;
-        document.getElementById('useItemName').textContent = btn.dataset.itemName;
-        document.getElementById('useMaxText').textContent = max;
-        const input = document.getElementById('useQuantity');
-        input.max = max;
-        input.value = 1;
+    function setReceiveFeedback(message, type) {
+        const feedback = byId('receiveFeedback');
+        if (!feedback) return;
+        feedback.className = `alert mb-3 ${type === 'error' ? 'alert-danger' : 'alert-success'}`;
+        feedback.textContent = message || '';
+        feedback.classList.toggle('d-none', !message);
+    }
 
-        printerSelect.innerHTML = '';
-        printerSelect.add(new Option('— Odaberi printer —', '', true, true));
-        printers.forEach(name => printerSelect.add(new Option(name, name)));
-        document.getElementById('useSiteId').innerHTML = '<option value="">— Prvo odaberi printer —</option>';
-    }));
+    function updatePageSummary(summary) {
+        if (!summary) return;
+        const values = {
+            totalProductsCount: summary.totalCount,
+            availableProductsCount: summary.availableCount,
+            orderedProductsCount: summary.orderedCount,
+            missingProductsCount: summary.missingCount,
+            totalAvailableUnits: summary.totalAvailableUnits,
+            totalOrderedUnits: summary.totalOrderedUnits
+        };
+        Object.entries(values).forEach(([id, value]) => {
+            const element = byId(id);
+            if (element && value !== undefined && value !== null) element.textContent = value;
+        });
+    }
 
-    document.getElementById('usePrinterName')?.addEventListener('change', function () {
-        fillSiteOptions(this.value);
+    function replaceCurrentProduct(product) {
+        currentProduct = product;
+        const productDataScript = byId(`productData-${currentProduct.id}`);
+        if (productDataScript) productDataScript.textContent = JSON.stringify(currentProduct);
+        renderStatus();
+        renderOrderSteppers();
+        renderUseSteppers();
+        renderPendingOrders();
+        renderUsePrinters();
+    }
+
+    byId('receiveForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!currentProduct) return;
+
+        const form = event.currentTarget;
+        const submitter = activeReceiveButton;
+        setReceiveFeedback('', 'success');
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            const payload = contentType.includes('application/json')
+                ? await response.json()
+                : null;
+
+            if (!response.ok || !payload?.success)
+                throw new Error(payload?.message || 'Zaprimanje nije uspjelo. Osvježi stranicu i pokušaj ponovno.');
+
+            replaceCurrentProduct(payload.product);
+            updatePageSummary(payload.summary);
+            byId('receiveOrderId').value = '';
+            setReceiveFeedback(payload.message || 'Narudžba je uspješno zaprimljena.', 'success');
+        } catch (error) {
+            setReceiveFeedback(error?.message || 'Zaprimanje nije uspjelo.', 'error');
+        } finally {
+            if (submitter?.isConnected) {
+                submitter.disabled = false;
+                submitter.textContent = submitter.dataset.originalText || 'Zaprimi cijelu narudžbu';
+            }
+            activeReceiveButton = null;
+        }
+    });
+
+    function findSiteMapKey(printerName) {
+        return Object.keys(printerSiteMap).find(key => key.toLocaleLowerCase('hr-HR') === printerName.toLocaleLowerCase('hr-HR'));
+    }
+
+    function renderUsePrinters() {
+        const printerSelect = byId('usePrinterName');
+        const siteSelect = byId('useSiteId');
+        printerSelect.innerHTML = '<option value="">— Odaberi printer —</option>';
+        (currentProduct?.printers || []).forEach(name => printerSelect.add(new Option(name, name)));
+        siteSelect.innerHTML = '<option value="">— Prvo odaberi printer —</option>';
+    }
+
+    function renderSites(printerName) {
+        const siteSelect = byId('useSiteId');
+        siteSelect.innerHTML = '';
+        const key = findSiteMapKey(printerName || '');
+        const sites = key ? printerSiteMap[key] || [] : [];
+        if (sites.length === 0) {
+            const option = new Option('Nema povezanog radnog naloga / lokacije', '');
+            option.disabled = true;
+            option.selected = true;
+            siteSelect.add(option);
+            return;
+        }
+        siteSelect.add(new Option('— Odaberi radni nalog / lokaciju —', '', true, true));
+        sites.forEach(site => {
+            const label = site.count > 1 ? `${site.siteName} (${site.count})` : site.siteName;
+            siteSelect.add(new Option(label, site.siteId));
+        });
+    }
+
+    byId('usePrinterName').addEventListener('change', event => renderSites(event.target.value));
+
+    document.querySelectorAll('[data-back-to-actions]').forEach(button => {
+        button.addEventListener('click', () => {
+            const childModal = button.closest('.modal');
+            if (!childModal || !currentProduct) return;
+            bootstrap.Modal.getOrCreateInstance(childModal).hide();
+            childModal.addEventListener('hidden.bs.modal', () => {
+                bootstrap.Modal.getOrCreateInstance(actionModal).show();
+            }, { once: true });
+        });
+    });
+
+    document.querySelectorAll('[data-open-modal]').forEach(button => {
+        button.addEventListener('click', () => {
+            const target = document.querySelector(button.dataset.openModal);
+            if (!target || !currentProduct) return;
+            bootstrap.Modal.getOrCreateInstance(actionModal).hide();
+            actionModal.addEventListener('hidden.bs.modal', () => bootstrap.Modal.getOrCreateInstance(target).show(), { once: true });
+        });
+    });
+
+    byId('deleteProductButton').addEventListener('click', () => {
+        if (!currentProduct) return;
+        if (window.confirm(`Premjestiti proizvod "${currentProduct.name}" u Nedavno obrisano?`))
+            byId('deleteProductForm').requestSubmit();
     });
 })();
 </script>

@@ -1,13 +1,29 @@
 using ITEquipmentInventory.Data;
 using ITEquipmentInventory.Services;
+using ITEquipmentInventory.Services.Search;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Ne koristi dijeljeni korisnički Data Protection spremnik. Ključevi iz njega
+// mogu biti šifrirani DPAPI profilom drugog Windows korisnika, što sprječava
+// pokretanje aplikacije u dotnet watchu.
+var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "data", "data-protection-keys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+
+var dataProtectionBuilder = builder.Services
+    .AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+    .SetApplicationName("ITEquipmentInventory");
+
+if (OperatingSystem.IsWindows())
+    dataProtectionBuilder.ProtectKeysWithDpapi();
 
 // Vrijeme pokretanja aplikacije.
 // Cookie koji je napravljen prije ovog pokretanja više neće vrijediti.
@@ -118,6 +134,26 @@ else
 Directory.CreateDirectory(profileImagesPath);
 builder.Configuration["ResolvedProfileImagesPath"] = profileImagesPath;
 
+var configuredConsumableImagesPath =
+    builder.Configuration["ConsumableImagesPath"] ??
+    Environment.GetEnvironmentVariable("RADNIK_CONSUMABLE_IMAGES_PATH");
+
+string consumableImagesPath;
+if (!string.IsNullOrWhiteSpace(configuredConsumableImagesPath))
+{
+    consumableImagesPath = Path.GetFullPath(configuredConsumableImagesPath);
+}
+else if (OperatingSystem.IsLinux() && Directory.Exists("/srv/radnik"))
+{
+    consumableImagesPath = "/srv/radnik/data/consumable-images";
+}
+else
+{
+    consumableImagesPath = Path.Combine(builder.Environment.ContentRootPath, "data", "consumable-images");
+}
+Directory.CreateDirectory(consumableImagesPath);
+builder.Configuration["ResolvedConsumableImagesPath"] = consumableImagesPath;
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
@@ -125,6 +161,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<SecurityAuditService>();
 builder.Services.AddScoped<RecycleBinService>();
+builder.Services.AddSingleton<ISearchNormalizer, SearchNormalizer>();
+builder.Services.AddSingleton<ISearchSynonymProvider, SearchSynonymProvider>();
+builder.Services.AddSingleton<ISearchQueryService, SearchQueryService>();
+builder.Services.AddSingleton<ISearchQueryBuilder, SearchQueryBuilder>();
+builder.Services.AddSingleton<ISearchFuzzyMatcher, SearchFuzzyMatcher>();
 
 var app = builder.Build();
 
@@ -185,6 +226,30 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapGet("/consumable-images/{fileName}", [Authorize] (string fileName) =>
+{
+    var safeName = Path.GetFileName(fileName);
+    if (!string.Equals(fileName, safeName, StringComparison.Ordinal) ||
+        !System.Text.RegularExpressions.Regex.IsMatch(
+            safeName,
+            @"^consumable-[0-9]+\.(jpg|jpeg|png|webp)$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        return Results.NotFound();
+
+    var fullPath = Path.Combine(consumableImagesPath, safeName);
+    if (!File.Exists(fullPath))
+        return Results.NotFound();
+
+    var contentType = Path.GetExtension(safeName).ToLowerInvariant() switch
+    {
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".png" => "image/png",
+        ".webp" => "image/webp",
+        _ => "application/octet-stream"
+    };
+    return Results.File(fullPath, contentType, enableRangeProcessing: false);
+});
 
 app.MapControllerRoute(
     name: "default",

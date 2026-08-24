@@ -1,28 +1,22 @@
 @model ITEquipmentInventory.ViewModels.DashboardViewModel
 
 @{
-    ViewData["Title"] = "Home";
+    ViewData["Title"] = "Početna";
     var isAdmin = User.IsInRole("Admin");
 }
 
-<div class="dashboard-page-v4">
-     @if (User.IsInRole("Admin")){
-    <section class="hero-panel-v4" aria-label="Pregled sustava">
-        
+<div class="dashboard-page-v4 dashboard-page-v5">
+    @if (isAdmin)
+    {
+        <section class="hero-panel-v4 dashboard-welcome-panel" aria-label="Pregled sustava">
+            <div class="hero-copy-v4 dashboard-welcome-copy">
+                <span class="hero-kicker-v4">IT EQUIPMENT INVENTORY</span>
+                <h1>Pregled inventure</h1>
+                <p class="hero-subhead-v4">Dobro došao u sustav inventure</p>
+              
+            </div>
 
-        
-        @if (User.IsInRole("Admin"))
-        {
-            
-                <div class="hero-copy-v4">
-                    <span class="hero-kicker-v4">IT Equipment Inventory</span>
-                    <h1>Pregled inventure</h1>
-                </div>
-         
-        }
-        @if (isAdmin)
-        {
-            <div class="hero-actions-v4">
+            <div class="hero-actions-v4 dashboard-welcome-actions">
                 <a asp-controller="Equipment" asp-action="Create" class="btn btn-primary app-action-btn" data-add-new>
                     <span aria-hidden="true">＋</span> Dodaj opremu
                 </a>
@@ -30,12 +24,9 @@
                     <span aria-hidden="true">👤</span> Dodaj korisnika
                 </a>
             </div>
-        }
-    </section>
-    }
-    @if (isAdmin)
-    {
-        <section class="dashboard-grid-v4" aria-label="Glavni dashboard">
+        </section>
+
+        <section class="dashboard-grid-v4" aria-label="Glavni pokazatelji inventure">
             <a asp-controller="Equipment" asp-action="Index" class="dashboard-card-v4 card-blue">
                 <span class="card-glow-v4"></span>
                 <div class="card-head-v4">
@@ -63,7 +54,7 @@
                class="dashboard-card-v4 card-green">
                 <span class="card-glow-v4"></span>
                 <div class="card-head-v4">
-                    <span class="card-icon-v4">✅</span>
+                    <span class="card-icon-v4">✓</span>
                     <span class="card-chip-v4">Spremno</span>
                 </div>
                 <div class="dashboard-label-v4">Slobodna oprema</div>
@@ -118,9 +109,10 @@
         <section class="user-dashboard-card-v4">
             <div class="user-dashboard-icon-v4">🔐</div>
             <div>
-                <h2>Moj korisnički prostor</h2>
+                <span class="page-kicker">Korisnički račun</span>
+                <h2>Dobro došao u sustav inventure</h2>
                 <p class="mb-0 text-muted">
-                    Prijavljen si kao obični korisnik. Dostupni su samo moduli koje admin dodijeli tvojoj ulozi.
+                    Prijavljen si kao obični korisnik. Dostupni su moduli koje administrator dodijeli tvojoj ulozi.
                 </p>
             </div>
         </section>
