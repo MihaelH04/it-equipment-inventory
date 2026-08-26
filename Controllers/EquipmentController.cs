@@ -24,28 +24,30 @@ public class EquipmentController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string searchString, string sortOrder, string statusFilter)
+    public async Task<IActionResult> Index(string searchString, string sortOrder, string statusFilter, int page = 1)
     {
-        var equipmentList = await GetFilteredEquipmentAsync(searchString, sortOrder, statusFilter);
+        var result = await GetFilteredEquipmentAsync(searchString, sortOrder, statusFilter, page);
         await LoadEquipmentStatsAsync();
         SetSortAndFilterViewBags(searchString, sortOrder, statusFilter);
+        SetPaginationViewBags(result);
 
-        return View(equipmentList);
+        return View(result.Items);
     }
 
     [HttpGet]
-    public async Task<IActionResult> IndexTable(string searchString, string sortOrder, string statusFilter)
+    public async Task<IActionResult> IndexTable(string searchString, string sortOrder, string statusFilter, int page = 1)
     {
-        var equipmentList = await GetFilteredEquipmentAsync(searchString, sortOrder, statusFilter);
+        var result = await GetFilteredEquipmentAsync(searchString, sortOrder, statusFilter, page);
         SetSortAndFilterViewBags(searchString, sortOrder, statusFilter);
+        SetPaginationViewBags(result);
 
-        return PartialView("_EquipmentTable", equipmentList);
+        return PartialView("_EquipmentTable", result.Items);
     }
 
     [HttpGet]
     public async Task<IActionResult> ExportExcel(string searchString, string sortOrder, string statusFilter)
     {
-        var equipmentList = await GetFilteredEquipmentAsync(searchString, sortOrder, statusFilter);
+        var equipmentList = await GetFilteredEquipmentAsync(searchString, sortOrder, statusFilter, null);
 
         var bytes = ExcelExportHelper.CreateExcel(
             "Oprema",
@@ -54,7 +56,7 @@ public class EquipmentController : Controller
                 "Inventurni broj", "Serijski broj", "Vrsta", "Naziv", "Status",
                 "Radni nalog", "Zaposlenik", "Datum zaduženja", "Predao"
             },
-            equipmentList.Select(e => new object?[]
+            equipmentList.Items.Select(e => new object?[]
             {
                 e.InventoryNumber,
                 e.SerialNumber,
@@ -663,7 +665,7 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
 
         var employees = await _context.Employees
             .OrderBy(e => e.FullName)
-            .Take(300)
+            .Take(PaginationConstants.MaxAutocompleteResults)
             .ToListAsync();
 
         var results = employees
@@ -692,7 +694,7 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
             .Include(e => e.CurrentEmployee)
             .AsNoTracking()
             .OrderBy(e => e.InventoryNumber)
-            .Take(2000)
+            .Take(PaginationConstants.MaxSearchSuggestionResults)
             .ToListAsync();
 
         var suggestions = new List<(string Text, string Value)>();
@@ -787,12 +789,13 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
         return Json(results);
     }
 
-    private async Task<List<Equipment>> GetFilteredEquipmentAsync(string searchString, string sortOrder, string statusFilter)
+    private async Task<PagedResult<Equipment>> GetFilteredEquipmentAsync(string searchString, string sortOrder, string statusFilter, int? page)
     {
         var query = _context.Equipment
             .Include(e => e.CurrentSite)
             .Include(e => e.CurrentEmployee)
             .AsSplitQuery()
+            .AsNoTracking()
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(statusFilter) &&
@@ -800,6 +803,17 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
             Enum.IsDefined(typeof(EquipmentStatus), parsedStatus))
         {
             query = query.Where(e => e.Status == parsedStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            foreach (var token in TokenizeSearch(searchString))
+            {
+                query = query.Where(e => (e.InventoryNumber ?? string.Empty).Contains(token) ||
+                    (e.SerialNumber != null && e.SerialNumber.Contains(token)) || (e.Name ?? string.Empty).Contains(token) ||
+                    (e.CurrentSite != null && (e.CurrentSite.Name.Contains(token) || (e.CurrentSite.Code != null && e.CurrentSite.Code.Contains(token)))) ||
+                    (e.CurrentEmployee != null && (e.CurrentEmployee.FullName.Contains(token) || e.CurrentEmployee.WorkerCode.Contains(token))));
+            }
         }
 
         query = sortOrder switch
@@ -823,19 +837,25 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
             _ => query.OrderBy(e => e.InventoryNumber)
         };
 
-        var equipmentList = await query.ToListAsync();
+        var totalCount = await query.CountAsync();
+        if (page is null)
+            return new PagedResult<Equipment> { Items = await query.ToListAsync(), CurrentPage = 1, TotalPages = 1, TotalCount = totalCount };
 
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
-            var rawSearch = searchString.Trim();
-            var searchTokens = TokenizeSearch(rawSearch);
+        var currentPage = Math.Max(1, page.Value);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
+        currentPage = Math.Min(currentPage, totalPages);
+        var items = await query.Skip((currentPage - 1) * PaginationConstants.DefaultPageSize).Take(PaginationConstants.DefaultPageSize).ToListAsync();
+        return new PagedResult<Equipment> { Items = items, CurrentPage = currentPage, TotalPages = totalPages, TotalCount = totalCount };
+    }
 
-            equipmentList = equipmentList
-                .Where(e => RecordMatchesAllTokens(e, searchTokens))
-                .ToList();
-        }
-
-        return equipmentList;
+    private void SetPaginationViewBags<T>(PagedResult<T> result)
+    {
+        ViewBag.CurrentPage = result.CurrentPage;
+        ViewBag.PageSize = result.PageSize;
+        ViewBag.TotalPages = result.TotalPages;
+        ViewBag.FilteredCount = result.TotalCount;
+        ViewBag.FirstItem = result.TotalCount == 0 ? 0 : (result.CurrentPage - 1) * result.PageSize + 1;
+        ViewBag.LastItem = Math.Min(result.CurrentPage * result.PageSize, result.TotalCount);
     }
 
     private void SetSortAndFilterViewBags(string searchString, string sortOrder, string statusFilter)

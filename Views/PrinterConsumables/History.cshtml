@@ -158,6 +158,8 @@
             </table>
         </div>
     </div>
+    @{ ViewBag.CurrentPage = Model.CurrentPage; ViewBag.TotalPages = Model.TotalPages; ViewBag.FilteredCount = Model.TotalCount; }
+    @await Html.PartialAsync("_Pagination")
 </div>
 
 @section Scripts {

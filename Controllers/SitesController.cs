@@ -23,33 +23,35 @@ public class SitesController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string searchString, string sortBy, string sortDir, string statusFilter)
+    public async Task<IActionResult> Index(string searchString, string sortBy, string sortDir, string statusFilter, int page = 1)
     {
-        var sites = await GetFilteredSitesAsync(searchString, sortBy, sortDir, statusFilter);
+        var result = await GetFilteredSitesAsync(searchString, sortBy, sortDir, statusFilter, page);
         await LoadSiteStatsAsync();
         SetSiteListViewBags(searchString, sortBy, sortDir, statusFilter);
 
-        return View(sites);
+        SetPaginationViewBags(result);
+        return View(result.Items);
     }
 
     [HttpGet]
-    public async Task<IActionResult> IndexTable(string searchString, string sortBy, string sortDir, string statusFilter)
+    public async Task<IActionResult> IndexTable(string searchString, string sortBy, string sortDir, string statusFilter, int page = 1)
     {
-        var sites = await GetFilteredSitesAsync(searchString, sortBy, sortDir, statusFilter);
+        var result = await GetFilteredSitesAsync(searchString, sortBy, sortDir, statusFilter, page);
         SetSiteListViewBags(searchString, sortBy, sortDir, statusFilter);
 
-        return PartialView("_SitesTable", sites);
+        SetPaginationViewBags(result);
+        return PartialView("_SitesTable", result.Items);
     }
 
     [HttpGet]
     public async Task<IActionResult> ExportExcel(string searchString, string sortBy, string sortDir, string statusFilter)
     {
-        var sites = await GetFilteredSitesAsync(searchString, sortBy, sortDir, statusFilter);
+        var sites = await GetFilteredSitesAsync(searchString, sortBy, sortDir, statusFilter, null);
 
         var bytes = ExcelExportHelper.CreateExcel(
             "Radni nalozi",
             new[] { "Naziv", "Šifra", "Lokacija", "Status" },
-            sites.Select(s => new object?[]
+            sites.Items.Select(s => new object?[]
             {
                 s.Name,
                 s.Code,
@@ -73,7 +75,7 @@ public class SitesController : Controller
         var sites = await _context.Sites
             .AsNoTracking()
             .OrderBy(s => s.Name)
-            .Take(2000)
+            .Take(PaginationConstants.MaxSearchSuggestionResults)
             .ToListAsync();
 
         var suggestions = new List<(string Text, string Value)>();
@@ -377,10 +379,10 @@ public class SitesController : Controller
 
     // ─── Private helpers ──────────────────────────────────────────────────────
 
-    private async Task<List<Site>> GetFilteredSitesAsync(
-        string searchString, string sortBy, string sortDir, string statusFilter)
+    private async Task<PagedResult<Site>> GetFilteredSitesAsync(
+        string searchString, string sortBy, string sortDir, string statusFilter, int? page)
     {
-        var query = _context.Sites.AsQueryable();
+        var query = _context.Sites.AsNoTracking().AsQueryable();
 
         // Status filter
         if (!string.IsNullOrWhiteSpace(statusFilter))
@@ -389,6 +391,12 @@ public class SitesController : Controller
                 query = query.Where(s => s.Status == SiteStatus.Aktivno);
             else if (statusFilter == "Neaktivno")
                 query = query.Where(s => s.Status == SiteStatus.Neaktivno);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            foreach (var token in TokenizeSearch(searchString))
+                query = query.Where(s => s.Name.Contains(token) || (s.Code != null && s.Code.Contains(token)) || (s.Location != null && s.Location.Contains(token)));
         }
 
         bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
@@ -412,15 +420,22 @@ public class SitesController : Controller
                 : query.OrderBy(s => s.Name)
         };
 
-        var sites = await query.ToListAsync();
+        var totalCount = await query.CountAsync();
+        if (page is null)
+            return new PagedResult<Site> { Items = await query.ToListAsync(), CurrentPage = 1, TotalPages = 1, TotalCount = totalCount };
+        var currentPage = Math.Max(1, page.Value);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
+        currentPage = Math.Min(currentPage, totalPages);
+        var items = await query.Skip((currentPage - 1) * PaginationConstants.DefaultPageSize).Take(PaginationConstants.DefaultPageSize).ToListAsync();
+        return new PagedResult<Site> { Items = items, CurrentPage = currentPage, TotalPages = totalPages, TotalCount = totalCount };
+    }
 
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
-            var tokens = TokenizeSearch(searchString);
-            sites = sites.Where(s => SiteMatchesSearch(s, tokens)).ToList();
-        }
-
-        return sites;
+    private void SetPaginationViewBags<T>(PagedResult<T> result)
+    {
+        ViewBag.CurrentPage = result.CurrentPage;
+        ViewBag.PageSize = result.PageSize;
+        ViewBag.TotalPages = result.TotalPages;
+        ViewBag.FilteredCount = result.TotalCount;
     }
 
     private async Task LoadSiteStatsAsync()

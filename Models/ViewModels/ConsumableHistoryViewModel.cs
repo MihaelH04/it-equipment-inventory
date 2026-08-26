@@ -8,6 +8,9 @@ public class ConsumableHistoryViewModel
     public DateTime DateTo { get; set; }
     public string SearchString { get; set; } = string.Empty;
     public string SortOrder { get; set; } = string.Empty;
+    public int CurrentPage { get; set; } = 1;
+    public int TotalPages { get; set; } = 1;
+    public int TotalCount { get; set; }
     public IReadOnlyList<ConsumableTransaction> Transactions { get; set; }
         = Array.Empty<ConsumableTransaction>();
     public IReadOnlyList<ConsumableOrderedSummaryRow> OrderedSummary { get; set; }

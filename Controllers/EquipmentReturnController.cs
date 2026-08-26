@@ -1,5 +1,6 @@
 using ITEquipmentInventory.Data;
 using ITEquipmentInventory.Models;
+using ITEquipmentInventory.Models.ViewModels;
 using ITEquipmentInventory.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,26 +23,28 @@ public class EquipmentReturnController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string searchString, string sortOrder)
+    public async Task<IActionResult> Index(string searchString, string sortOrder, int page = 1)
     {
-        var items = await GetFilteredReturnsAsync(searchString, sortOrder);
+        var result = await GetFilteredReturnsAsync(searchString, sortOrder, page);
         await LoadStatsAsync();
         SetSortViewBags(searchString, sortOrder);
-        return View(items);
+        SetPaginationViewBags(result);
+        return View(result.Items);
     }
 
     [HttpGet]
-    public async Task<IActionResult> IndexTable(string searchString, string sortOrder)
+    public async Task<IActionResult> IndexTable(string searchString, string sortOrder, int page = 1)
     {
-        var items = await GetFilteredReturnsAsync(searchString, sortOrder);
+        var result = await GetFilteredReturnsAsync(searchString, sortOrder, page);
         SetSortViewBags(searchString, sortOrder);
-        return PartialView("_EquipmentReturnTable", items);
+        SetPaginationViewBags(result);
+        return PartialView("_EquipmentReturnTable", result.Items);
     }
 
     [HttpGet]
     public async Task<IActionResult> ExportExcel(string searchString, string sortOrder)
     {
-        var items = await GetFilteredReturnsAsync(searchString, sortOrder);
+        var items = await GetFilteredReturnsAsync(searchString, sortOrder, null);
 
         var bytes = ExcelExportHelper.CreateExcel(
             "Razduženja",
@@ -50,7 +53,7 @@ public class EquipmentReturnController : Controller
                 "Inventurni broj", "Serijski broj", "Vrsta", "Naziv", "Radni nalog",
                 "Zaposlenik", "Datum zaduženja", "Datum razduženja", "Tko je zadužio", "Razdužio", "Napomena"
             },
-            items.Select(x => new object?[]
+            items.Items.Select(x => new object?[]
             {
                 x.InventoryNumber,
                 x.SerialNumber,
@@ -81,7 +84,7 @@ public class EquipmentReturnController : Controller
         var returnList = await _context.EquipmentReturns
             .AsNoTracking()
             .OrderByDescending(x => x.ReturnedAt)
-            .Take(2000)
+            .Take(PaginationConstants.MaxSearchSuggestionResults)
             .ToListAsync();
 
         var suggestions = new List<(string Text, string Value)>();
@@ -267,9 +270,22 @@ public class EquipmentReturnController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<List<EquipmentReturn>> GetFilteredReturnsAsync(string searchString, string sortOrder)
+    private async Task<PagedResult<EquipmentReturn>> GetFilteredReturnsAsync(string searchString, string sortOrder, int? page)
     {
-        var query = _context.EquipmentReturns.AsQueryable();
+        var query = _context.EquipmentReturns.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            foreach (var token in TokenizeSearch(searchString))
+            {
+                query = query.Where(x => (x.InventoryNumber ?? string.Empty).Contains(token) || (x.SerialNumber != null && x.SerialNumber.Contains(token)) ||
+                    (x.Name ?? string.Empty).Contains(token) || (x.PreviousSiteCode != null && x.PreviousSiteCode.Contains(token)) ||
+                    (x.PreviousSiteName != null && x.PreviousSiteName.Contains(token)) ||
+                    (x.PreviousEmployeeCode != null && x.PreviousEmployeeCode.Contains(token)) ||
+                    (x.PreviousEmployeeName != null && x.PreviousEmployeeName.Contains(token)) ||
+                    (x.HandedOverBy != null && x.HandedOverBy.Contains(token)) || (x.Note != null && x.Note.Contains(token)));
+            }
+        }
 
         query = sortOrder switch
         {
@@ -291,15 +307,22 @@ public class EquipmentReturnController : Controller
             _ => query.OrderByDescending(x => x.ReturnedAt)
         };
 
-        var list = await query.ToListAsync();
+        var totalCount = await query.CountAsync();
+        if (page is null)
+            return new PagedResult<EquipmentReturn> { Items = await query.ToListAsync(), CurrentPage = 1, TotalPages = 1, TotalCount = totalCount };
+        var currentPage = Math.Max(1, page.Value);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
+        currentPage = Math.Min(currentPage, totalPages);
+        var items = await query.Skip((currentPage - 1) * PaginationConstants.DefaultPageSize).Take(PaginationConstants.DefaultPageSize).ToListAsync();
+        return new PagedResult<EquipmentReturn> { Items = items, CurrentPage = currentPage, TotalPages = totalPages, TotalCount = totalCount };
+    }
 
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
-            var tokens = TokenizeSearch(searchString);
-            list = list.Where(x => ReturnMatchesTokens(x, tokens)).ToList();
-        }
-
-        return list;
+    private void SetPaginationViewBags<T>(PagedResult<T> result)
+    {
+        ViewBag.CurrentPage = result.CurrentPage;
+        ViewBag.PageSize = result.PageSize;
+        ViewBag.TotalPages = result.TotalPages;
+        ViewBag.FilteredCount = result.TotalCount;
     }
 
     private bool ReturnMatchesTokens(EquipmentReturn item, List<string> searchTokens)

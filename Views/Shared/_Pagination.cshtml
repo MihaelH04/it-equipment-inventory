@@ -1,0 +1,51 @@
+@using Microsoft.AspNetCore.WebUtilities
+@{
+    var currentPage = ViewBag.CurrentPage is int current ? current : 1;
+    var totalPages = ViewBag.TotalPages is int total ? total : 1;
+    var totalCount = ViewBag.FilteredCount is int count ? count : 0;
+    var query = Context.Request.Query.ToDictionary(x => x.Key, x => (string?)x.Value.ToString());
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var targetPath = string.Equals(currentAction, "IndexTable", StringComparison.OrdinalIgnoreCase)
+        ? Url.Action("Index", controller) ?? Context.Request.Path.ToString()
+        : Context.Request.Path.ToString();
+    string PageUrl(int page)
+    {
+        query["page"] = page.ToString();
+        return QueryHelpers.AddQueryString(targetPath, query);
+    }
+    var start = Math.Max(1, currentPage - 2);
+    var end = Math.Min(totalPages, start + 4);
+    start = Math.Max(1, end - 4);
+}
+
+@if (totalCount > 0)
+{
+    <nav class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3" aria-label="Navigacija kroz stranice">
+        <small class="text-muted">Ukupno: @totalCount</small>
+        <ul class="pagination pagination-sm mb-0 flex-wrap">
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a class="page-link ajax-page-link" href="@PageUrl(Math.Max(1, currentPage - 1))" aria-disabled="@(currentPage == 1)">Prethodna</a>
+            </li>
+            @if (start > 1)
+            {
+                <li class="page-item"><a class="page-link ajax-page-link" href="@PageUrl(1)">1</a></li>
+                @if (start > 2) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+            }
+            @for (var number = start; number <= end; number++)
+            {
+                <li class="page-item @(number == currentPage ? "active" : "")">
+                    <a class="page-link ajax-page-link" href="@PageUrl(number)" aria-current="@(number == currentPage ? "page" : null)">@number</a>
+                </li>
+            }
+            @if (end < totalPages)
+            {
+                @if (end < totalPages - 1) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                <li class="page-item"><a class="page-link ajax-page-link" href="@PageUrl(totalPages)">@totalPages</a></li>
+            }
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a class="page-link ajax-page-link" href="@PageUrl(Math.Min(totalPages, currentPage + 1))" aria-disabled="@(currentPage == totalPages)">Sljedeća</a>
+            </li>
+        </ul>
+    </nav>
+}

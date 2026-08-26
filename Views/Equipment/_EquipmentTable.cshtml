@@ -10,7 +10,6 @@
     int filteredCount = ViewBag.FilteredCount is int filteredCountValue ? filteredCountValue : Model.Count();
     int firstItem = ViewBag.FirstItem is int firstItemValue ? firstItemValue : (filteredCount == 0 ? 0 : 1);
     int lastItem = ViewBag.LastItem is int lastItemValue ? lastItemValue : Model.Count();
-    int[] pageSizeOptions = ViewBag.PageSizeOptions as int[] ?? new[] { 10, 25, 50, 100 };
 
     int startPage = Math.Max(1, currentPage - 2);
     int endPage = Math.Min(totalPages, startPage + 4);
@@ -285,16 +284,6 @@
         <div class="equipment-pagination-shell" aria-label="Navigacija kroz stranice opreme">
             <div class="equipment-pagination-summary">
                 Prikaz <strong>@firstItem–@lastItem</strong> od <strong>@filteredCount</strong> stavki
-            </div>
-
-            <div class="equipment-pagination-size">
-                <label for="equipmentPageSizeSelect">Redaka po stranici</label>
-                <select id="equipmentPageSizeSelect" class="form-select form-select-sm">
-                    @foreach (var option in pageSizeOptions)
-                    {
-                        <option value="@option" selected="@(option == pageSize)">@option</option>
-                    }
-                </select>
             </div>
 
             @if (totalPages > 1)

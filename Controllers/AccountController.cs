@@ -138,11 +138,19 @@ public class AccountController : Controller
 
     [Authorize(Roles = "Admin")]
     [HttpGet]
-    public async Task<IActionResult> Users()
+    public async Task<IActionResult> Users(int page = 1)
     {
-        var users = await _context.AppUsers.AsNoTracking()
+        var query = _context.AppUsers.AsNoTracking()
             .OrderByDescending(u => u.Role == AppUserRole.Admin)
-            .ThenBy(u => u.UserName).ToListAsync();
+            .ThenBy(u => u.UserName);
+        var totalCount = await query.CountAsync();
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
+        page = Math.Min(Math.Max(1, page), totalPages);
+        ViewBag.CurrentPage = page;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.FilteredCount = totalCount;
+        var users = await query.Skip((page - 1) * PaginationConstants.DefaultPageSize)
+            .Take(PaginationConstants.DefaultPageSize).ToListAsync();
         return View(users);
     }
 

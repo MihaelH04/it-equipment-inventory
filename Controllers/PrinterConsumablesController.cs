@@ -246,20 +246,21 @@ public class PrinterConsumablesController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? searchString, string? statusFilter, string? sortOrder)
+    public async Task<IActionResult> Index(string? searchString, string? statusFilter, string? sortOrder, int page = 1)
     {
         await EnsurePendingOrdersBackfilledAsync();
-        var items = await GetFilteredItemsAsync(searchString, statusFilter, sortOrder);
+        var result = await GetFilteredItemsAsync(searchString, statusFilter, sortOrder, page);
         await LoadStatsAsync();
         await LoadIndexBagsAsync(searchString, statusFilter, sortOrder);
         await LoadFormBagsAsync();
-        return View(items);
+        SetPaginationViewBags(result);
+        return View(result.Items);
     }
 
     [HttpGet]
     public async Task<IActionResult> ExportExcel(string? searchString, string? statusFilter, string? sortOrder)
     {
-        var items = await GetFilteredItemsAsync(searchString, statusFilter, sortOrder);
+        var items = await GetFilteredItemsAsync(searchString, statusFilter, sortOrder, null);
         var bytes = ExcelExportHelper.CreateExcel(
             "Toneri i tinte",
             new[]
@@ -267,7 +268,7 @@ public class PrinterConsumablesController : Controller
                 "Kompatibilni printeri", "Naziv artikla", "Šifra artikla", "Vrsta",
                 "Original / zamjenski", "Stanje po bojama", "Dostupno", "Naručeno", "Status", "Zadnja izmjena"
             },
-            items.Select(x => new object?[]
+            items.Items.Select(x => new object?[]
             {
                 x.CompatiblePrintersSummary, x.Name, x.ProductCode, GetEnumDisplayName(x.Type),
                 x.ProductKindText, x.ColorStatesSummary, x.QuantityAvailable,
@@ -788,14 +789,15 @@ public class PrinterConsumablesController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> History(DateTime? dateFrom, DateTime? dateTo, string? searchString, string? sortOrder)
+    public async Task<IActionResult> History(DateTime? dateFrom, DateTime? dateTo, string? searchString, string? sortOrder, int page = 1)
     {
         var from = (dateFrom ?? new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1)).Date;
         var to = (dateTo ?? from.AddMonths(1).AddDays(-1)).Date;
         if (to < from)
             (from, to) = (to, from);
 
-        var transactions = await GetHistoryTransactionsAsync(from, to, searchString, sortOrder);
+        var history = await GetPagedHistoryTransactionsAsync(from, to, searchString, sortOrder, page);
+        var transactions = history.Items;
         var model = new ConsumableHistoryViewModel
         {
             DateFrom = from,
@@ -803,6 +805,9 @@ public class PrinterConsumablesController : Controller
             SearchString = searchString ?? string.Empty,
             SortOrder = sortOrder ?? string.Empty,
             Transactions = transactions,
+            CurrentPage = history.CurrentPage,
+            TotalPages = history.TotalPages,
+            TotalCount = history.TotalCount,
             OrderedSummary = transactions
                 .Where(x => x.TransactionType == ConsumableTransactionType.Naruceno)
                 .GroupBy(x => new { x.ConsumableName, x.ProductCode })
@@ -856,48 +861,57 @@ public class PrinterConsumablesController : Controller
             $"Evidencija_tonera_{from:yyyyMMdd}_{to:yyyyMMdd}.xlsx");
     }
 
-    private async Task<List<PrinterConsumable>> GetFilteredItemsAsync(string? searchString, string? statusFilter, string? sortOrder)
+    private async Task<PagedResult<PrinterConsumable>> GetFilteredItemsAsync(string? searchString, string? statusFilter, string? sortOrder, int? page)
     {
-        var rawItems = await _context.PrinterConsumables
+        var search = _searchQueries.Parse(searchString);
+        var matchingIds = search.IsEmpty
+            ? null
+            : await FindConsumableIdsAsync(search, HttpContext.RequestAborted);
+        IQueryable<PrinterConsumable> query = _context.PrinterConsumables
             .AsNoTracking()
             .Include(x => x.CompatiblePrinters)
             .Include(x => x.Transactions)
-            .Include(x => x.PendingOrders)
-            .ToListAsync();
-
-        var items = BuildFamilyDisplayItems(rawItems);
-
-        items = statusFilter switch
+            .Include(x => x.PendingOrders);
+        if (matchingIds is not null)
+            query = query.Where(x => matchingIds.Contains(x.Id));
+        query = statusFilter switch
         {
-            "Dostupno" => items.Where(x => x.QuantityAvailable > 0).ToList(),
-            "Naruceno" => items.Where(x => x.QuantityOrdered > 0).ToList(),
-            "Nema" => items.Where(x => x.QuantityAvailable == 0 && x.QuantityOrdered == 0).ToList(),
-            _ => items
+            "Dostupno" => query.Where(x => x.QuantityAvailable > 0),
+            "Naruceno" => query.Where(x => x.QuantityOrdered > 0),
+            "Nema" => query.Where(x => x.QuantityAvailable == 0 && x.QuantityOrdered == 0),
+            _ => query
         };
-
-        var search = _searchQueries.Parse(searchString);
-        if (!search.IsEmpty)
-            items = items.Where(x => ConsumableMatches(x, search)).ToList();
-
-        var ranked = items.OrderByDescending(x => ConsumableScore(x, search));
-
-        return sortOrder switch
+        query = sortOrder switch
         {
-            "printers_desc" => ranked.ThenByDescending(x => x.CompatiblePrintersSummary).ThenBy(x => x.Name).ToList(),
-            "name" => ranked.ThenBy(x => x.Name).ToList(),
-            "name_desc" => ranked.ThenByDescending(x => x.Name).ToList(),
-            "type" => ranked.ThenBy(x => GetEnumDisplayName(x.Type)).ThenBy(x => x.Name).ToList(),
-            "type_desc" => ranked.ThenByDescending(x => GetEnumDisplayName(x.Type)).ThenBy(x => x.Name).ToList(),
-            "available" => ranked.ThenBy(x => x.QuantityAvailable).ThenBy(x => x.Name).ToList(),
-            "available_desc" => ranked.ThenByDescending(x => x.QuantityAvailable).ThenBy(x => x.Name).ToList(),
-            "ordered" => ranked.ThenBy(x => x.QuantityOrdered).ThenBy(x => x.Name).ToList(),
-            "ordered_desc" => ranked.ThenByDescending(x => x.QuantityOrdered).ThenBy(x => x.Name).ToList(),
-            "status" => ranked.ThenBy(GetAvailabilitySortValue).ThenBy(x => x.Name).ToList(),
-            "status_desc" => ranked.ThenByDescending(GetAvailabilitySortValue).ThenBy(x => x.Name).ToList(),
-            "original" => ranked.ThenByDescending(x => x.IsOriginal).ThenBy(x => x.Name).ToList(),
-            "original_desc" => ranked.ThenBy(x => x.IsOriginal).ThenBy(x => x.Name).ToList(),
-            _ => ranked.ThenBy(x => x.Name).ToList()
+            "printers_desc" => query.OrderByDescending(x => x.CompatiblePrinters.Select(p => p.PrinterName).FirstOrDefault()).ThenBy(x => x.Name),
+            "name" => query.OrderBy(x => x.Name),
+            "name_desc" => query.OrderByDescending(x => x.Name),
+            "type" => query.OrderBy(x => x.Type).ThenBy(x => x.Name),
+            "type_desc" => query.OrderByDescending(x => x.Type).ThenBy(x => x.Name),
+            "available" => query.OrderBy(x => x.QuantityAvailable).ThenBy(x => x.Name),
+            "available_desc" => query.OrderByDescending(x => x.QuantityAvailable).ThenBy(x => x.Name),
+            "ordered" => query.OrderBy(x => x.QuantityOrdered).ThenBy(x => x.Name),
+            "ordered_desc" => query.OrderByDescending(x => x.QuantityOrdered).ThenBy(x => x.Name),
+            "status" => query.OrderBy(x => x.QuantityAvailable > 0 ? 0 : x.QuantityOrdered > 0 ? 1 : 2).ThenBy(x => x.Name),
+            "status_desc" => query.OrderByDescending(x => x.QuantityAvailable > 0 ? 0 : x.QuantityOrdered > 0 ? 1 : 2).ThenBy(x => x.Name),
+            "original" => query.OrderByDescending(x => x.IsOriginal).ThenBy(x => x.Name),
+            "original_desc" => query.OrderBy(x => x.IsOriginal).ThenBy(x => x.Name),
+            _ => query.OrderBy(x => x.Name)
         };
+        var totalCount = await query.CountAsync(HttpContext.RequestAborted);
+        if (page is null)
+            return new PagedResult<PrinterConsumable> { Items = BuildFamilyDisplayItems(await query.ToListAsync(HttpContext.RequestAborted)), CurrentPage = 1, TotalPages = 1, TotalCount = totalCount };
+        var currentPage = Math.Min(Math.Max(1, page.Value), Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize)));
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
+        var items = await query.Skip((currentPage - 1) * PaginationConstants.DefaultPageSize).Take(PaginationConstants.DefaultPageSize).ToListAsync(HttpContext.RequestAborted);
+        return new PagedResult<PrinterConsumable> { Items = BuildFamilyDisplayItems(items), CurrentPage = currentPage, TotalPages = totalPages, TotalCount = totalCount };
+    }
+
+    private void SetPaginationViewBags<T>(PagedResult<T> result)
+    {
+        ViewBag.CurrentPage = result.CurrentPage;
+        ViewBag.TotalPages = result.TotalPages;
+        ViewBag.FilteredCount = result.TotalCount;
     }
 
     private bool ConsumableMatches(PrinterConsumable item, SearchQuery search) => _searchQueries.Matches(search,
@@ -922,6 +936,12 @@ public class PrinterConsumablesController : Controller
 
     private async Task<List<ConsumableTransaction>> GetHistoryTransactionsAsync(DateTime from, DateTime to, string? searchString, string? sortOrder)
     {
+        var query = BuildHistoryTransactionQuery(from, to, searchString, sortOrder);
+        return await query.ToListAsync(HttpContext.RequestAborted);
+    }
+
+    private IQueryable<ConsumableTransaction> BuildHistoryTransactionQuery(DateTime from, DateTime to, string? searchString, string? sortOrder)
+    {
         var until = to.AddDays(1);
         var query = _context.ConsumableTransactions
             .AsNoTracking()
@@ -940,7 +960,19 @@ public class PrinterConsumablesController : Controller
             "quantity_desc" => ranked.ThenByDescending(x => x.Quantity).ThenByDescending(x => x.CreatedAt),
             _ => ranked.ThenByDescending(x => x.CreatedAt)
         };
-        return await query.ToListAsync(HttpContext.RequestAborted);
+        return query;
+    }
+
+    private async Task<PagedResult<ConsumableTransaction>> GetPagedHistoryTransactionsAsync(DateTime from, DateTime to, string? searchString, string? sortOrder, int page)
+    {
+        var query = BuildHistoryTransactionQuery(from, to, searchString, sortOrder);
+        var totalCount = await query.CountAsync(HttpContext.RequestAborted);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
+        var currentPage = Math.Min(Math.Max(1, page), totalPages);
+        var items = await query.Skip((currentPage - 1) * PaginationConstants.DefaultPageSize)
+            .Take(PaginationConstants.DefaultPageSize)
+            .ToListAsync(HttpContext.RequestAborted);
+        return new PagedResult<ConsumableTransaction> { Items = items, CurrentPage = currentPage, TotalPages = totalPages, TotalCount = totalCount };
     }
 
     private async Task LoadStatsAsync()

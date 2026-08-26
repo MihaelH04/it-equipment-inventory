@@ -1,5 +1,6 @@
 using ITEquipmentInventory.Data;
 using ITEquipmentInventory.Services;
+using ITEquipmentInventory.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ public class RecycleBinController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? searchString)
+    public async Task<IActionResult> Index(string? searchString, int page = 1)
     {
         await _recycleBin.PurgeExpiredAsync();
 
@@ -35,9 +36,16 @@ public class RecycleBinController : Controller
                 (x.DeletedBy != null && x.DeletedBy.Contains(term)));
         }
 
+        var totalCount = await query.CountAsync();
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
+        page = Math.Min(Math.Max(1, page), totalPages);
         ViewBag.SearchString = searchString;
-        var items = await query
-            .OrderByDescending(x => x.DeletedAtUtc)
+        ViewBag.CurrentPage = page;
+        ViewBag.TotalPages = totalPages;
+        ViewBag.FilteredCount = totalCount;
+        var items = await query.OrderByDescending(x => x.DeletedAtUtc)
+            .Skip((page - 1) * PaginationConstants.DefaultPageSize)
+            .Take(PaginationConstants.DefaultPageSize)
             .ToListAsync();
 
         return View(items);

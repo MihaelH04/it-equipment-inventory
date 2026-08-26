@@ -24,35 +24,37 @@ public class EmployeesController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir)
+    public async Task<IActionResult> Index(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir, int page = 1)
     {
-        var employees = await GetFilteredEmployeesAsync(searchString, statusFilter, siteFilter, sortBy, sortDir);
+        var result = await GetFilteredEmployeesAsync(searchString, statusFilter, siteFilter, sortBy, sortDir, page);
 
         await LoadEmployeeStatsAsync();
         SetEmployeeListViewBags(searchString, statusFilter, siteFilter, sortBy, sortDir);
 
-        return View(employees);
+        SetPaginationViewBags(result);
+        return View(result.Items);
     }
 
     [HttpGet]
-    public async Task<IActionResult> IndexTable(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir)
+    public async Task<IActionResult> IndexTable(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir, int page = 1)
     {
-        var employees = await GetFilteredEmployeesAsync(searchString, statusFilter, siteFilter, sortBy, sortDir);
+        var result = await GetFilteredEmployeesAsync(searchString, statusFilter, siteFilter, sortBy, sortDir, page);
 
         SetEmployeeListViewBags(searchString, statusFilter, siteFilter, sortBy, sortDir);
 
-        return PartialView("_EmployeesTable", employees);
+        SetPaginationViewBags(result);
+        return PartialView("_EmployeesTable", result.Items);
     }
 
     [HttpGet]
     public async Task<IActionResult> ExportExcel(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir)
     {
-        var employees = await GetFilteredEmployeesAsync(searchString, statusFilter, siteFilter, sortBy, sortDir);
+        var employees = await GetFilteredEmployeesAsync(searchString, statusFilter, siteFilter, sortBy, sortDir, null);
 
         var bytes = ExcelExportHelper.CreateExcel(
             "Zaposlenici",
             new[] { "Šifra radnika", "Ime i prezime", "Radni nalog", "Šifra radnog naloga", "Status" },
-            employees.Select(e => new object?[]
+            employees.Items.Select(e => new object?[]
             {
                 e.WorkerCode,
                 e.FullName,
@@ -78,7 +80,7 @@ public class EmployeesController : Controller
             .Include(e => e.Site)
             .AsNoTracking()
             .OrderBy(e => e.WorkerCode)
-            .Take(2000)
+            .Take(PaginationConstants.MaxSearchSuggestionResults)
             .ToListAsync();
 
         var suggestions = new List<(string Text, string Value)>();
@@ -408,11 +410,12 @@ public class EmployeesController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<List<Employee>> GetFilteredEmployeesAsync(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir)
+    private async Task<PagedResult<Employee>> GetFilteredEmployeesAsync(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir, int? page)
     {
         var query = _context.Employees
             .Include(e => e.Site)
             .AsSplitQuery()
+            .AsNoTracking()
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(statusFilter) &&
@@ -420,6 +423,21 @@ public class EmployeesController : Controller
             Enum.IsDefined(typeof(EmployeeStatus), parsedStatus))
         {
             query = query.Where(e => e.Status == parsedStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(siteFilter))
+        {
+            var term = siteFilter.Trim();
+            query = query.Where(e => e.Site != null && (e.Site.Name.Contains(term) || (e.Site.Code != null && e.Site.Code.Contains(term))));
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            foreach (var token in TokenizeSearch(searchString))
+            {
+                query = query.Where(e => e.WorkerCode.Contains(token) || e.FullName.Contains(token) ||
+                    (e.Site != null && (e.Site.Name.Contains(token) || (e.Site.Code != null && e.Site.Code.Contains(token)))));
+            }
         }
 
         bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
@@ -443,29 +461,22 @@ public class EmployeesController : Controller
                 : query.OrderBy(e => e.WorkerCode)
         };
 
-        var employees = await query.ToListAsync();
+        var totalCount = await query.CountAsync();
+        if (page is null)
+            return new PagedResult<Employee> { Items = await query.ToListAsync(), CurrentPage = 1, TotalPages = 1, TotalCount = totalCount };
+        var currentPage = Math.Max(1, page.Value);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
+        currentPage = Math.Min(currentPage, totalPages);
+        var items = await query.Skip((currentPage - 1) * PaginationConstants.DefaultPageSize).Take(PaginationConstants.DefaultPageSize).ToListAsync();
+        return new PagedResult<Employee> { Items = items, CurrentPage = currentPage, TotalPages = totalPages, TotalCount = totalCount };
+    }
 
-        if (!string.IsNullOrWhiteSpace(siteFilter))
-        {
-            var normalizedSiteFilter = RemoveDiacritics(NormalizeSearch(siteFilter));
-
-            employees = employees
-                .Where(e =>
-                    RemoveDiacritics(NormalizeSearch(e.Site?.Name)).Contains(normalizedSiteFilter) ||
-                    RemoveDiacritics(NormalizeSearch(e.Site?.Code)).Contains(normalizedSiteFilter))
-                .ToList();
-        }
-
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
-            var searchTokens = TokenizeSearch(searchString);
-
-            employees = employees
-                .Where(e => EmployeeMatchesUniversalSearch(e, searchTokens))
-                .ToList();
-        }
-
-        return employees;
+    private void SetPaginationViewBags<T>(PagedResult<T> result)
+    {
+        ViewBag.CurrentPage = result.CurrentPage;
+        ViewBag.PageSize = result.PageSize;
+        ViewBag.TotalPages = result.TotalPages;
+        ViewBag.FilteredCount = result.TotalCount;
     }
 
     private async Task LoadEmployeeStatsAsync()

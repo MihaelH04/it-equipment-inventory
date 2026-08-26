@@ -51,9 +51,6 @@ data/data-protection-keys/
 data/data-protection-keys-unreadable-backup/
 
 
-
-
-
 # OS files
 .DS_Store
 Thumbs.db
