@@ -457,7 +457,7 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
         await LoadLookupDataAsync();
         await SetSelectedTextsAsync(null, null);
 
-        return View(new Equipment
+        return View(new EquipmentCreateViewModel
         {
             AssignedAt = DateTime.Today
         });
@@ -465,52 +465,54 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Equipment equipment)
+    public async Task<IActionResult> Create(EquipmentCreateViewModel model)
     {
-        if (equipment.AssignedAt.HasValue)
-            equipment.AssignedAt = equipment.AssignedAt.Value.Date;
+        if (model.AssignedAt.HasValue)
+            model.AssignedAt = model.AssignedAt.Value.Date;
 
-        if (equipment.ReturnedAt.HasValue)
-            equipment.ReturnedAt = equipment.ReturnedAt.Value.Date;
+        if (model.ReturnedAt.HasValue)
+            model.ReturnedAt = model.ReturnedAt.Value.Date;
 
-        equipment.HandedOverBy = NormalizeNullableText(equipment.HandedOverBy);
+        model.HandedOverBy = NormalizeNullableText(model.HandedOverBy);
 
-        if (equipment.Status == EquipmentStatus.Zaduzeno && string.IsNullOrWhiteSpace(equipment.HandedOverBy))
+        if (model.Status == EquipmentStatus.Zaduzeno && string.IsNullOrWhiteSpace(model.HandedOverBy))
         {
             ModelState.AddModelError(
-                nameof(equipment.HandedOverBy),
+                nameof(model.HandedOverBy),
                 "Za zaduženje opreme odaberi aktivnog administratora iz korisnika."
             );
         }
-        else if (!await IsValidHandedOverByAdminAsync(equipment.HandedOverBy))
+        else if (!await IsValidHandedOverByAdminAsync(model.HandedOverBy))
         {
             ModelState.AddModelError(
-                nameof(equipment.HandedOverBy),
+                nameof(model.HandedOverBy),
                 "Zadužiti može samo aktivni administrator iz korisnika."
             );
         }
 
-        if (equipment.Status == EquipmentStatus.Dostupno)
+        if (model.Status == EquipmentStatus.Dostupno)
         {
-            equipment.CurrentSiteId = null;
-            equipment.CurrentEmployeeId = null;
+            model.CurrentSiteId = null;
+            model.CurrentEmployeeId = null;
 
-            if (!equipment.ReturnedAt.HasValue)
-                equipment.ReturnedAt = DateTime.Today;
+            if (!model.ReturnedAt.HasValue)
+                model.ReturnedAt = DateTime.Today;
         }
 
-        if (equipment.Status == EquipmentStatus.Zaduzeno)
+        if (model.Status == EquipmentStatus.Zaduzeno)
         {
-            equipment.ReturnedAt = null;
+            model.ReturnedAt = null;
         }
 
         if (!ModelState.IsValid)
         {
             await LoadLookupDataAsync();
-            await SetSelectedTextsAsync(equipment.CurrentSiteId, equipment.CurrentEmployeeId);
-            return View(equipment);
+            await SetSelectedTextsAsync(model.CurrentSiteId, model.CurrentEmployeeId);
+            return View(model);
         }
 
+        var equipment = new Equipment();
+        ApplyEquipmentInput(equipment, model);
         _context.Equipment.Add(equipment);
         await _context.SaveChangesAsync();
 
@@ -534,64 +536,109 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
         await LoadLookupDataAsync();
         await SetSelectedTextsAsync(equipment.CurrentSiteId, equipment.CurrentEmployeeId);
 
-        return View(equipment);
+        return View(new EquipmentEditViewModel
+        {
+            Id = equipment.Id,
+            InventoryNumber = equipment.InventoryNumber,
+            Name = equipment.Name,
+            SerialNumber = equipment.SerialNumber,
+            EquipmentType = equipment.EquipmentType,
+            Status = equipment.Status,
+            CurrentEmployeeId = equipment.CurrentEmployeeId,
+            CurrentSiteId = equipment.CurrentSiteId,
+            AssignedAt = equipment.AssignedAt,
+            ReturnedAt = equipment.ReturnedAt,
+            HandedOverBy = equipment.HandedOverBy,
+            RowVersion = equipment.RowVersion
+        });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Equipment equipment)
+    public async Task<IActionResult> Edit(int id, EquipmentEditViewModel model)
     {
-        if (id != equipment.Id)
+        if (id != model.Id)
             return NotFound();
 
-        if (equipment.AssignedAt.HasValue)
-            equipment.AssignedAt = equipment.AssignedAt.Value.Date;
+        if (model.AssignedAt.HasValue)
+            model.AssignedAt = model.AssignedAt.Value.Date;
 
-        if (equipment.ReturnedAt.HasValue)
-            equipment.ReturnedAt = equipment.ReturnedAt.Value.Date;
+        if (model.ReturnedAt.HasValue)
+            model.ReturnedAt = model.ReturnedAt.Value.Date;
 
-        equipment.HandedOverBy = NormalizeNullableText(equipment.HandedOverBy);
+        model.HandedOverBy = NormalizeNullableText(model.HandedOverBy);
 
-        if (equipment.Status == EquipmentStatus.Zaduzeno && string.IsNullOrWhiteSpace(equipment.HandedOverBy))
+        if (model.Status == EquipmentStatus.Zaduzeno && string.IsNullOrWhiteSpace(model.HandedOverBy))
         {
             ModelState.AddModelError(
-                nameof(equipment.HandedOverBy),
+                nameof(model.HandedOverBy),
                 "Za zaduženje opreme odaberi aktivnog administratora iz korisnika."
             );
         }
-        else if (!await IsValidHandedOverByAdminAsync(equipment.HandedOverBy))
+        else if (!await IsValidHandedOverByAdminAsync(model.HandedOverBy))
         {
             ModelState.AddModelError(
-                nameof(equipment.HandedOverBy),
+                nameof(model.HandedOverBy),
                 "Zadužiti može samo aktivni administrator iz korisnika."
             );
         }
 
-        if (equipment.Status == EquipmentStatus.Dostupno)
+        if (model.Status == EquipmentStatus.Dostupno)
         {
-            equipment.CurrentSiteId = null;
-            equipment.CurrentEmployeeId = null;
+            model.CurrentSiteId = null;
+            model.CurrentEmployeeId = null;
 
-            if (!equipment.ReturnedAt.HasValue)
-                equipment.ReturnedAt = DateTime.Today;
+            if (!model.ReturnedAt.HasValue)
+                model.ReturnedAt = DateTime.Today;
         }
 
-        if (equipment.Status == EquipmentStatus.Zaduzeno)
+        if (model.Status == EquipmentStatus.Zaduzeno)
         {
-            equipment.ReturnedAt = null;
+            model.ReturnedAt = null;
         }
 
         if (!ModelState.IsValid)
         {
             await LoadLookupDataAsync();
-            await SetSelectedTextsAsync(equipment.CurrentSiteId, equipment.CurrentEmployeeId);
-            return View(equipment);
+            await SetSelectedTextsAsync(model.CurrentSiteId, model.CurrentEmployeeId);
+            return View(model);
         }
 
-        _context.Update(equipment);
-        await _context.SaveChangesAsync();
+        var equipment = await _context.Equipment.FirstOrDefaultAsync(x => x.Id == id);
+        if (equipment == null)
+        {
+            TempData["Error"] = "Oprema više ne postoji ili je već obrisana.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        ApplyEquipmentInput(equipment, model);
+        _context.Entry(equipment).Property(x => x.RowVersion).OriginalValue = model.RowVersion;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            TempData["Error"] = "Zapis je u međuvremenu izmijenio drugi korisnik. Vaše promjene nisu spremljene. Osvježite podatke i pokušajte ponovno.";
+            return RedirectToAction(nameof(Edit), new { id });
+        }
 
         return RedirectToAction(nameof(Index));
+    }
+
+    private static void ApplyEquipmentInput(Equipment equipment, EquipmentCreateViewModel model)
+    {
+        equipment.InventoryNumber = model.InventoryNumber;
+        equipment.Name = model.Name;
+        equipment.SerialNumber = model.SerialNumber;
+        equipment.EquipmentType = model.EquipmentType;
+        equipment.Status = model.Status;
+        equipment.CurrentEmployeeId = model.CurrentEmployeeId;
+        equipment.CurrentSiteId = model.CurrentSiteId;
+        equipment.AssignedAt = model.AssignedAt;
+        equipment.ReturnedAt = model.ReturnedAt;
+        equipment.HandedOverBy = model.HandedOverBy;
     }
 
     [HttpGet]

@@ -1,4 +1,4 @@
-@model ITEquipmentInventory.Models.PrinterConsumable
+@model ITEquipmentInventory.Models.ViewModels.PrinterConsumableEditViewModel
 @{
     ViewData["Title"] = "Uredi artikl";
 }
@@ -14,6 +14,7 @@
 
     <form asp-action="Edit" asp-route-id="Model.Id" method="post" enctype="multipart/form-data" class="consumable-form-card">
         <input asp-for="Id" type="hidden" />
+        <input asp-for="RowVersion" type="hidden" />
         <partial name="_Form" model="Model" />
         <div class="consumable-form-actions">
             <a asp-action="Index" class="btn btn-outline-secondary">Odustani</a>

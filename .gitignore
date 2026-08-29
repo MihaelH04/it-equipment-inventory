@@ -54,3 +54,7 @@ data/data-protection-keys-unreadable-backup/
 # OS files
 .DS_Store
 Thumbs.db
+
+# SQLite runtime files
+*.db-shm
+*.db-wal

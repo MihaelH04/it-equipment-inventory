@@ -309,20 +309,27 @@ public class EmployeesController : Controller
     {
         await LoadSiteLookupDataAsync();
         await SetSelectedSiteTextAsync(null);
-        return View(new Employee());
+        return View(new EmployeeCreateViewModel());
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Employee employee)
+    public async Task<IActionResult> Create(EmployeeCreateViewModel model)
     {
         if (!ModelState.IsValid)
         {
             await LoadSiteLookupDataAsync();
-            await SetSelectedSiteTextAsync(employee.SiteId);
-            return View(employee);
+            await SetSelectedSiteTextAsync(model.SiteId);
+            return View(model);
         }
 
+        var employee = new Employee
+        {
+            WorkerCode = model.WorkerCode,
+            FullName = model.FullName,
+            SiteId = model.SiteId,
+            Status = model.Status
+        };
         _context.Employees.Add(employee);
         await _context.SaveChangesAsync();
 
@@ -346,25 +353,53 @@ public class EmployeesController : Controller
         await LoadSiteLookupDataAsync();
         await SetSelectedSiteTextAsync(employee.SiteId);
 
-        return View(employee);
+        return View(new EmployeeEditViewModel
+        {
+            Id = employee.Id,
+            WorkerCode = employee.WorkerCode,
+            FullName = employee.FullName,
+            SiteId = employee.SiteId,
+            Status = employee.Status,
+            RowVersion = employee.RowVersion
+        });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Employee employee)
+    public async Task<IActionResult> Edit(int id, EmployeeEditViewModel model)
     {
-        if (id != employee.Id)
+        if (id != model.Id)
             return NotFound();
 
         if (!ModelState.IsValid)
         {
             await LoadSiteLookupDataAsync();
-            await SetSelectedSiteTextAsync(employee.SiteId);
-            return View(employee);
+            await SetSelectedSiteTextAsync(model.SiteId);
+            return View(model);
         }
 
-        _context.Update(employee);
-        await _context.SaveChangesAsync();
+        var employee = await _context.Employees.FirstOrDefaultAsync(x => x.Id == id);
+        if (employee == null)
+        {
+            TempData["Error"] = "Zaposlenik više ne postoji ili je već obrisan.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        employee.WorkerCode = model.WorkerCode;
+        employee.FullName = model.FullName;
+        employee.SiteId = model.SiteId;
+        employee.Status = model.Status;
+        _context.Entry(employee).Property(x => x.RowVersion).OriginalValue = model.RowVersion;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            TempData["Error"] = "Zapis je u međuvremenu izmijenio drugi korisnik. Vaše promjene nisu spremljene. Osvježite podatke i pokušajte ponovno.";
+            return RedirectToAction(nameof(Edit), new { id });
+        }
 
         TempData["Success"] = "Zaposlenik je uspješno ažuriran.";
         return RedirectToAction(nameof(Index));

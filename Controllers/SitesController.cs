@@ -293,16 +293,23 @@ public class SitesController : Controller
     [HttpGet]
     public IActionResult Create()
     {
-        return View(new Site { Status = SiteStatus.Aktivno });
+        return View(new SiteCreateViewModel { Status = SiteStatus.Aktivno });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Site site)
+    public async Task<IActionResult> Create(SiteCreateViewModel model)
     {
         if (!ModelState.IsValid)
-            return View(site);
+            return View(model);
 
+        var site = new Site
+        {
+            Code = model.Code,
+            Name = model.Name,
+            Location = model.Location,
+            Status = model.Status
+        };
         _context.Sites.Add(site);
         await _context.SaveChangesAsync();
 
@@ -321,20 +328,37 @@ public class SitesController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        return View(site);
+        return View(new SiteEditViewModel
+        {
+            Id = site.Id,
+            Code = site.Code,
+            Name = site.Name,
+            Location = site.Location,
+            Status = site.Status
+        });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Site site)
+    public async Task<IActionResult> Edit(int id, SiteEditViewModel model)
     {
-        if (id != site.Id)
+        if (id != model.Id)
             return NotFound();
 
         if (!ModelState.IsValid)
-            return View(site);
+            return View(model);
 
-        _context.Update(site);
+        var site = await _context.Sites.FirstOrDefaultAsync(x => x.Id == id);
+        if (site == null)
+        {
+            TempData["Error"] = "Radni nalog više ne postoji ili je već obrisan.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        site.Code = model.Code;
+        site.Name = model.Name;
+        site.Location = model.Location;
+        site.Status = model.Status;
         await _context.SaveChangesAsync();
 
         TempData["Success"] = "Radni nalog je uspješno ažuriran.";

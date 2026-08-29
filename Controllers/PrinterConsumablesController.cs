@@ -285,21 +285,20 @@ public class PrinterConsumablesController : Controller
     public async Task<IActionResult> Create()
     {
         await LoadFormBagsAsync();
-        return View(new PrinterConsumable
+        return View(new PrinterConsumableCreateViewModel
         {
             Type = ConsumableType.Toner,
-            Color = ConsumableColor.NijePrimjenjivo,
             IsOriginal = true
         });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("Name,ProductCode,Type,QuantityAvailable,QuantityOrdered,IsOriginal,CompatiblePrintersText,ProductImage")] PrinterConsumable model)
+    public async Task<IActionResult> Create(PrinterConsumableCreateViewModel model)
     {
         NormalizeModel(model);
         if (string.IsNullOrWhiteSpace(model.Name))
-            ModelState.AddModelError(nameof(PrinterConsumable.Name), "Naziv proizvoda je obavezan.");
+            ModelState.AddModelError(nameof(PrinterConsumableFormViewModel.Name), "Naziv proizvoda je obavezan.");
         ValidateProductImage(model);
         var printers = ParsePrinterNames(model.CompatiblePrintersText);
         await ValidateCompatiblePrintersAsync(printers);
@@ -313,34 +312,43 @@ public class PrinterConsumablesController : Controller
             return View(model);
         }
 
-        model.Color = ConsumableColor.NijePrimjenjivo;
-        model.CreatedAt = DateTime.Now;
-        model.UpdatedAt = null;
+        var consumable = new PrinterConsumable
+        {
+            Name = model.Name,
+            ProductCode = model.ProductCode,
+            Type = model.Type,
+            Color = ConsumableColor.NijePrimjenjivo,
+            QuantityAvailable = model.QuantityAvailable,
+            QuantityOrdered = model.QuantityOrdered,
+            IsOriginal = model.IsOriginal,
+            CreatedAt = DateTime.Now,
+            UpdatedAt = null
+        };
 
-        if (model.UsesStandardColors)
+        if (consumable.UsesStandardColors)
         {
             // Kod tonera i tinte boje se vode kroz Naruči/Zaprimi/Izdaj, ne u osnovnom obrascu.
-            model.SetColorStates(CreateEmptyStandardColorStates());
+            consumable.SetColorStates(CreateEmptyStandardColorStates());
         }
         else
         {
-            model.SetColorStates([
-                new ConsumableColorState(ConsumableColor.NijePrimjenjivo, model.QuantityAvailable, model.QuantityOrdered)
+            consumable.SetColorStates([
+                new ConsumableColorState(ConsumableColor.NijePrimjenjivo, consumable.QuantityAvailable, consumable.QuantityOrdered)
             ]);
         }
 
-        model.CompatiblePrinters = printers
+        consumable.CompatiblePrinters = printers
             .Select(printer => new ConsumableCompatiblePrinter { PrinterName = printer })
             .ToList();
 
-        _context.PrinterConsumables.Add(model);
+        _context.PrinterConsumables.Add(consumable);
         await _context.SaveChangesAsync();
-        await SaveConsumableImageAsync(model);
+        await SaveConsumableImageAsync(consumable, model.ProductImage);
 
-        if (model.QuantityOrdered > 0)
+        if (consumable.QuantityOrdered > 0)
         {
-            AddPendingOrder(model, ConsumableColor.NijePrimjenjivo, model.QuantityOrdered);
-            AddTransaction(model, ConsumableTransactionType.Naruceno, model.QuantityOrdered, null, null, null, ConsumableColor.NijePrimjenjivo);
+            AddPendingOrder(consumable, ConsumableColor.NijePrimjenjivo, consumable.QuantityOrdered);
+            AddTransaction(consumable, ConsumableTransactionType.Naruceno, consumable.QuantityOrdered, null, null, null, ConsumableColor.NijePrimjenjivo);
             await _context.SaveChangesAsync();
         }
 
@@ -364,12 +372,24 @@ public class PrinterConsumablesController : Controller
             display.CompatiblePrinters.OrderBy(x => x.PrinterName).Select(x => x.PrinterName));
 
         await LoadFormBagsAsync();
-        return View(display);
+        return View(new PrinterConsumableEditViewModel
+        {
+            Id = display.Id,
+            Name = display.Name,
+            ProductCode = display.ProductCode,
+            Type = display.Type,
+            QuantityAvailable = display.QuantityAvailable,
+            QuantityOrdered = display.QuantityOrdered,
+            IsOriginal = display.IsOriginal,
+            CompatiblePrintersText = display.CompatiblePrintersText,
+            ImageUrl = display.ImageUrl,
+            RowVersion = display.RowVersion
+        });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, [Bind("Id,Name,ProductCode,Type,IsOriginal,CompatiblePrintersText,ProductImage")] PrinterConsumable model)
+    public async Task<IActionResult> Edit(int id, PrinterConsumableEditViewModel model)
     {
         if (id != model.Id)
             return NotFound();
@@ -378,12 +398,14 @@ public class PrinterConsumablesController : Controller
         if (original == null)
             return NotFound();
 
+        _context.Entry(original).Property(x => x.RowVersion).OriginalValue = model.RowVersion;
+
         var family = await GetFamilyItemsAsync(original, includePrinters: true, includePendingOrders: true);
         var originalFamilyIds = family.Select(x => x.Id).ToHashSet();
 
         NormalizeModel(model);
         if (string.IsNullOrWhiteSpace(model.Name))
-            ModelState.AddModelError(nameof(PrinterConsumable.Name), "Naziv proizvoda je obavezan.");
+            ModelState.AddModelError(nameof(PrinterConsumableFormViewModel.Name), "Naziv proizvoda je obavezan.");
         ValidateProductImage(model);
 
         // Ako uređivanje pretvara stari zasebni zapis u već postojeću zajedničku obitelj,
@@ -475,7 +497,15 @@ public class PrinterConsumablesController : Controller
         foreach (var consumableTransaction in transactions)
             consumableTransaction.PrinterConsumableId = canonical.Id;
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            TempData["Error"] = "Zapis je u međuvremenu izmijenio drugi korisnik. Vaše promjene nisu spremljene. Osvježite podatke i pokušajte ponovno.";
+            return RedirectToAction(nameof(Edit), new { id });
+        }
         await SaveConsumableImageAsync(canonical, model.ProductImage);
         TempData["Success"] = "Promjene su spremljene.";
         return RedirectToAction(nameof(Index));
@@ -1095,7 +1125,7 @@ public class PrinterConsumablesController : Controller
         return false;
     }
 
-    private async Task<bool> DuplicateExistsAsync(PrinterConsumable model, IReadOnlySet<int>? excludedIds = null)
+    private async Task<bool> DuplicateExistsAsync(PrinterConsumableFormViewModel model, IReadOnlySet<int>? excludedIds = null)
     {
         var query = _context.PrinterConsumables.AsNoTracking().AsQueryable();
         if (excludedIds is { Count: > 0 })
@@ -1270,6 +1300,7 @@ public class PrinterConsumablesController : Controller
         var display = new PrinterConsumable
         {
             Id = canonical.Id,
+            RowVersion = canonical.RowVersion,
             Name = GetDisplayFamilyName(canonical),
             ProductCode = canonical.ProductCode,
             Type = canonical.Type,
@@ -1671,7 +1702,7 @@ public class PrinterConsumablesController : Controller
     private static string NormalizePrinterOption(string? value) =>
         string.Join(" ", (value ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-    private static void NormalizeModel(PrinterConsumable model)
+    private static void NormalizeModel(PrinterConsumableFormViewModel model)
     {
         model.Name = model.Name?.Trim() ?? string.Empty;
         if (model.Type is ConsumableType.Toner or ConsumableType.Tinta)
@@ -1708,17 +1739,17 @@ public class PrinterConsumablesController : Controller
         model.ImageUrl = $"/consumable-images/{fileName}";
     }
 
-    private void ValidateProductImage(PrinterConsumable model)
+    private void ValidateProductImage(PrinterConsumableFormViewModel model)
     {
         if (model.ProductImage is not { Length: > 0 })
             return;
 
         if (model.ProductImage.Length > 2 * 1024 * 1024)
-            ModelState.AddModelError(nameof(PrinterConsumable.ProductImage), "Slika smije imati najviše 2 MB.");
+            ModelState.AddModelError(nameof(PrinterConsumableFormViewModel.ProductImage), "Slika smije imati najviše 2 MB.");
 
         if (!AllowedImageExtensions.Contains(Path.GetExtension(model.ProductImage.FileName), StringComparer.OrdinalIgnoreCase))
         {
-            ModelState.AddModelError(nameof(PrinterConsumable.ProductImage), "Dopuštene su JPG, PNG i WEBP slike.");
+            ModelState.AddModelError(nameof(PrinterConsumableFormViewModel.ProductImage), "Dopuštene su JPG, PNG i WEBP slike.");
             return;
         }
 

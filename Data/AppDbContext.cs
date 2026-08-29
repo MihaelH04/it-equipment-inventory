@@ -58,6 +58,21 @@ public class AppDbContext : DbContext
             .HasIndex(e => e.InventoryNumber)
             .IsUnique();
 
+        modelBuilder.Entity<Equipment>()
+            .Property(e => e.RowVersion)
+            .IsRequired()
+            .IsConcurrencyToken();
+
+        modelBuilder.Entity<Employee>()
+            .Property(e => e.RowVersion)
+            .IsRequired()
+            .IsConcurrencyToken();
+
+        modelBuilder.Entity<PrinterConsumable>()
+            .Property(c => c.RowVersion)
+            .IsRequired()
+            .IsConcurrencyToken();
+
         modelBuilder.Entity<Employee>()
             .Property(e => e.Status)
             .HasConversion<string>();
@@ -185,5 +200,41 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<DeletedItem>()
             .HasIndex(x => new { x.EntityType, x.OriginalId });
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        UpdateConcurrencyTokens();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        UpdateConcurrencyTokens();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void UpdateConcurrencyTokens()
+    {
+        ChangeTracker.DetectChanges();
+
+        foreach (var entry in ChangeTracker.Entries()
+                     .Where(entry => entry.State is EntityState.Added or EntityState.Modified))
+        {
+            switch (entry.Entity)
+            {
+                case Equipment equipment:
+                    equipment.RowVersion = Guid.NewGuid().ToByteArray();
+                    break;
+                case Employee employee:
+                    employee.RowVersion = Guid.NewGuid().ToByteArray();
+                    break;
+                case PrinterConsumable consumable:
+                    consumable.RowVersion = Guid.NewGuid().ToByteArray();
+                    break;
+            }
+        }
     }
 }

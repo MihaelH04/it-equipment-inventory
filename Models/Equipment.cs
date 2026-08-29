@@ -39,5 +39,7 @@ namespace ITEquipmentInventory.Models
 
         [Display(Name = "Predao")]
         public string? HandedOverBy { get; set; }
+
+        public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     }
 }

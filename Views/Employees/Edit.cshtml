@@ -1,4 +1,4 @@
-@model ITEquipmentInventory.Models.Employee
+@model ITEquipmentInventory.Models.ViewModels.EmployeeEditViewModel
 
 @{
     ViewData["Title"] = "Uredi zaposlenika";
@@ -10,6 +10,7 @@
 
     <form asp-action="Edit" method="post" autocomplete="off">
         <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="RowVersion" />
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
         <div class="mb-3">

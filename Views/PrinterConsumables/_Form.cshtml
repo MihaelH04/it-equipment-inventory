@@ -1,5 +1,5 @@
 @using System.Text.Json
-@model ITEquipmentInventory.Models.PrinterConsumable
+@model ITEquipmentInventory.Models.ViewModels.PrinterConsumableFormViewModel
 @{
     var printerOptionsJson = ViewBag.PrinterNameOptionsJson as string ?? "[]";
     var initialPrinters = (Model.CompatiblePrintersText ?? string.Empty)

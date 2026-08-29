@@ -198,12 +198,27 @@ public class EquipmentReturnController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        return View(item);
+        return View(new EquipmentReturnEditViewModel
+        {
+            Id = item.Id,
+            InventoryNumber = item.InventoryNumber,
+            SerialNumber = item.SerialNumber,
+            EquipmentType = item.EquipmentType,
+            Name = item.Name,
+            PreviousSiteCode = item.PreviousSiteCode,
+            PreviousSiteName = item.PreviousSiteName,
+            PreviousEmployeeCode = item.PreviousEmployeeCode,
+            PreviousEmployeeName = item.PreviousEmployeeName,
+            AssignedAt = item.AssignedAt,
+            ReturnedAt = item.ReturnedAt,
+            HandedOverBy = item.HandedOverBy,
+            Note = item.Note
+        });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, EquipmentReturn model)
+    public async Task<IActionResult> Edit(int id, EquipmentReturnEditViewModel model)
     {
         if (id != model.Id)
             return NotFound();
@@ -224,12 +239,10 @@ public class EquipmentReturnController : Controller
         existing.EquipmentType = model.EquipmentType;
         existing.PreviousSiteCode = model.PreviousSiteCode;
         existing.PreviousSiteName = model.PreviousSiteName;
-        existing.PreviousSiteLocation = model.PreviousSiteLocation;
         existing.PreviousEmployeeCode = model.PreviousEmployeeCode;
         existing.PreviousEmployeeName = model.PreviousEmployeeName;
         existing.AssignedAt = model.AssignedAt;
         existing.ReturnedAt = model.ReturnedAt;
-        existing.PreviousHandedOverBy = model.PreviousHandedOverBy;
         existing.HandedOverBy = model.HandedOverBy;
         existing.Note = model.Note;
 

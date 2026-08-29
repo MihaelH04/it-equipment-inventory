@@ -17,6 +17,8 @@ public class PrinterConsumable
 
     public int Id { get; set; }
 
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
     [Required(ErrorMessage = "Naziv artikla je obavezan.")]
     [StringLength(150)]
     [Display(Name = "Naziv artikla")]
