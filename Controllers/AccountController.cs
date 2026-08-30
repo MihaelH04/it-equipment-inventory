@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ITEquipmentInventory.Data;
+using ITEquipmentInventory.Configuration;
 using ITEquipmentInventory.Models;
 using ITEquipmentInventory.Models.ViewModels;
 using Microsoft.AspNetCore.Authentication;
@@ -14,17 +15,16 @@ namespace ITEquipmentInventory.Controllers;
 public class AccountController : Controller
 {
     private const int MaxFailedLoginAttempts = 5;
-    private static readonly TimeSpan AccountLockoutDuration = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan AccountLockoutDuration = TimeSpan.FromMinutes(15);
 
     private readonly AppDbContext _context;
     private readonly string _profileImagesPath;
     private readonly PasswordHasher<AppUser> _passwordHasher = new();
 
-    public AccountController(AppDbContext context, IWebHostEnvironment environment, IConfiguration configuration)
+    public AccountController(AppDbContext context, StoragePaths storagePaths)
     {
         _context = context;
-        _profileImagesPath = configuration["ResolvedProfileImagesPath"]
-            ?? Path.Combine(environment.ContentRootPath, "data", "profile-images");
+        _profileImagesPath = storagePaths.ProfileImagesPath;
         Directory.CreateDirectory(_profileImagesPath);
     }
 
@@ -82,7 +82,7 @@ public class AccountController : Controller
                     user.LockoutEndUtc = nowUtc.Add(AccountLockoutDuration);
                     await _context.SaveChangesAsync();
                     ModelState.AddModelError(string.Empty,
-                        "Račun je zaključan zbog pet neuspjelih pokušaja prijave. Pokušaj ponovno za 1 minutu.");
+                        "Račun je zaključan zbog pet neuspjelih pokušaja prijave. Pokušaj ponovno za 15 minuta.");
                     return View(model);
                 }
 
@@ -341,7 +341,8 @@ public class AccountController : Controller
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.UserName),
-            new(ClaimTypes.Role, user.Role.ToString())
+            new(ClaimTypes.Role, user.Role.ToString()),
+            new(AppUser.SecurityStampClaimType, user.SecurityStamp)
         };
         if (!string.IsNullOrWhiteSpace(user.FullName)) claims.Add(new Claim("FullName", user.FullName));
         if (!string.IsNullOrWhiteSpace(user.ProfileImagePath)) claims.Add(new Claim("ProfileImagePath", user.ProfileImagePath));

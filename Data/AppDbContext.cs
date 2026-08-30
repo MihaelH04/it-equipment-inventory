@@ -58,6 +58,11 @@ public class AppDbContext : DbContext
             .HasIndex(e => e.InventoryNumber)
             .IsUnique();
 
+        // Equipment je dodan nakon uvođenja BaseEntity i postojeća tablica nema CreatedAt stupac.
+        // Naslijeđeni property ostaje dostupan u C# modelu, ali se ne mapira u postojeću SQLite shemu.
+        modelBuilder.Entity<Equipment>()
+            .Ignore(e => e.CreatedAt);
+
         modelBuilder.Entity<Equipment>()
             .Property(e => e.RowVersion)
             .IsRequired()

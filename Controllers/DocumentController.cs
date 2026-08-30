@@ -4,6 +4,7 @@ using System.Text;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using ITEquipmentInventory.Data;
+using ITEquipmentInventory.Configuration;
 using ITEquipmentInventory.Models;
 using ITEquipmentInventory.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -17,12 +18,12 @@ namespace ITEquipmentInventory.Controllers
 public class DocumentController : Controller
     {
         private readonly AppDbContext _context;
-        private readonly IWebHostEnvironment _environment;
+        private readonly StoragePaths _storagePaths;
 
-        public DocumentController(AppDbContext context, IWebHostEnvironment environment)
+        public DocumentController(AppDbContext context, StoragePaths storagePaths)
         {
             _context = context;
-            _environment = environment;
+            _storagePaths = storagePaths;
         }
 
         [HttpGet]
@@ -42,15 +43,15 @@ public class DocumentController : Controller
             {
                 EquipmentId = equipment.Id,
                 Equipment = equipment,
-                PredaoInformatica = ResolveDefaultHandedOverBy(
+                HandedOverByTechnician = ResolveDefaultHandedOverBy(
                     equipment.HandedOverBy,
                     handedOverByOptions
                 ),
-                DatumZaduzenja = equipment.AssignedAt ?? DateTime.Now,
-                PrimioImePrezime = equipment.CurrentEmployee?.FullName ?? string.Empty,
-                NazivRadnogMjesta = string.Empty,
-                NazivMjestaTroska = equipment.CurrentSite?.Name ?? string.Empty,
-                SN = equipment.SerialNumber ?? string.Empty
+                AssignedAt = equipment.AssignedAt ?? DateTime.Now,
+                RecipientFullName = equipment.CurrentEmployee?.FullName ?? string.Empty,
+                JobTitle = string.Empty,
+                CostCenterName = equipment.CurrentSite?.Name ?? string.Empty,
+                SerialNumber = equipment.SerialNumber ?? string.Empty
             };
 
             return View(model);
@@ -71,14 +72,14 @@ public class DocumentController : Controller
             model.Equipment = equipment;
             var handedOverByOptions = await LoadHandedOverByOptionsAsync();
 
-            model.PredaoInformatica = NormalizeNullableText(model.PredaoInformatica) ?? string.Empty;
+            model.HandedOverByTechnician = NormalizeNullableText(model.HandedOverByTechnician) ?? string.Empty;
 
             if (!handedOverByOptions.Any(x =>
                     !string.IsNullOrWhiteSpace(x.Value) &&
-                    string.Equals(x.Value, model.PredaoInformatica, StringComparison.OrdinalIgnoreCase)))
+                    string.Equals(x.Value, model.HandedOverByTechnician, StringComparison.OrdinalIgnoreCase)))
             {
                 ModelState.AddModelError(
-                    nameof(model.PredaoInformatica),
+                    nameof(model.HandedOverByTechnician),
                     "Predati može samo aktivni administrator iz korisnika."
                 );
 
@@ -104,42 +105,42 @@ public class DocumentController : Controller
 
                 using (var doc = WordprocessingDocument.Open(tempDocxPath, true))
                 {
-                    ReplaceText(doc, "{{DATUM}}", model.DatumZaduzenja?.ToString("dd.MM.yyyy.") ?? "");
-                    ReplaceText(doc, "{{PREDAO_INFORMATICAR}}", model.PredaoInformatica ?? "");
-                    ReplaceText(doc, "{{PRIMIO_IME_PREZIME}}", model.PrimioImePrezime ?? "");
-                    ReplaceText(doc, "{{NAZIV_RADNOG_MJESTA}}", model.NazivRadnogMjesta ?? "");
-                    ReplaceText(doc, "{{NAZIV_MJESTA_TROSKA}}", model.NazivMjestaTroska ?? "");
+                    ReplaceText(doc, "{{DATUM}}", model.AssignedAt?.ToString("dd.MM.yyyy.") ?? "");
+                    ReplaceText(doc, "{{PREDAO_INFORMATICAR}}", model.HandedOverByTechnician ?? "");
+                    ReplaceText(doc, "{{PRIMIO_IME_PREZIME}}", model.RecipientFullName ?? "");
+                    ReplaceText(doc, "{{NAZIV_RADNOG_MJESTA}}", model.JobTitle ?? "");
+                    ReplaceText(doc, "{{NAZIV_MJESTA_TROSKA}}", model.CostCenterName ?? "");
 
                     if (equipment.EquipmentType == EquipmentType.PC || equipment.EquipmentType == EquipmentType.Laptop)
                     {
                         ReplaceText(doc, "{{MODEL_RACUNALA}}", equipment.Name ?? "");
                         ReplaceText(doc, "{{SERIJSKI_BROJ_RACUNALA}}", equipment.SerialNumber ?? "");
-                        ReplaceText(doc, "{{BROJ_OSNOVNOG_SREDSTVA}}", model.BrojOsnovnogSredstva ?? "");
-                        ReplaceText(doc, "{{PRINTER_ILI_DR}}", model.PrinterIliDr ?? "");
+                        ReplaceText(doc, "{{BROJ_OSNOVNOG_SREDSTVA}}", model.AssetNumber ?? "");
+                        ReplaceText(doc, "{{PRINTER_ILI_DR}}", model.PrinterOrOther ?? "");
                         ReplaceText(doc, "{{MICROSOFT_WINDOWS}}", model.MicrosoftWindows ?? "");
                         ReplaceText(doc, "{{MICROSOFT_OFFICE}}", model.MicrosoftOffice ?? "");
-                        ReplaceText(doc, "{{ANTIVIRUSNI_PROGRAM}}", model.AntivirusniProgram ?? "");
-                        ReplaceText(doc, "{{OSTALI_PROGRAMI}}", model.OstaliProgrami ?? "");
+                        ReplaceText(doc, "{{ANTIVIRUSNI_PROGRAM}}", model.AntivirusProgram ?? "");
+                        ReplaceText(doc, "{{OSTALI_PROGRAMI}}", model.OtherPrograms ?? "");
                     }
                     else if (equipment.EquipmentType == EquipmentType.Monitor)
                     {
                         ReplaceText(doc, "{{MODEL_MONITORA}}", equipment.Name ?? "");
                         ReplaceText(doc, "{{SERIJSKI_BROJ_MONITORA}}", equipment.SerialNumber ?? "");
-                        ReplaceText(doc, "{{BROJ_OSNOVNOG_SREDSTVA}}", model.BrojOsnovnogSredstva ?? "");
+                        ReplaceText(doc, "{{BROJ_OSNOVNOG_SREDSTVA}}", model.AssetNumber ?? "");
                     }
                     else if (equipment.EquipmentType == EquipmentType.Tablet)
                     {
                         ReplaceText(doc, "{{MODEL_TABLETA}}", equipment.Name ?? "");
-                        ReplaceText(doc, "{{BROJ_OSNOVNOG_SREDSTVA}}", model.BrojOsnovnogSredstva ?? "");
-                        ReplaceText(doc, "{{SN}}", string.IsNullOrWhiteSpace(equipment.SerialNumber) ? (model.SN ?? "") : equipment.SerialNumber);
-                        ReplaceText(doc, "{{DODATNA_OPREMA}}", model.DodatnaOprema ?? "");
+                        ReplaceText(doc, "{{BROJ_OSNOVNOG_SREDSTVA}}", model.AssetNumber ?? "");
+                        ReplaceText(doc, "{{SN}}", string.IsNullOrWhiteSpace(equipment.SerialNumber) ? (model.SerialNumber ?? "") : equipment.SerialNumber);
+                        ReplaceText(doc, "{{DODATNA_OPREMA}}", model.AdditionalEquipment ?? "");
                     }
                     else if (equipment.EquipmentType == EquipmentType.Mobitel)
                     {
                         ReplaceText(doc, "{{MODEL_UREDAJA}}", equipment.Name ?? "");
                         ReplaceText(doc, "{{IMEI}}", model.Imei ?? "");
-                        ReplaceText(doc, "{{SN}}", string.IsNullOrWhiteSpace(equipment.SerialNumber) ? (model.SN ?? "") : equipment.SerialNumber);
-                        ReplaceText(doc, "{{TARIFA_I_BROJ_MOB}}", model.TarifaIBrojMob ?? "");
+                        ReplaceText(doc, "{{SN}}", string.IsNullOrWhiteSpace(equipment.SerialNumber) ? (model.SerialNumber ?? "") : equipment.SerialNumber);
+                        ReplaceText(doc, "{{TARIFA_I_BROJ_MOB}}", model.MobilePlanAndNumber ?? "");
                     }
 
                     doc.MainDocumentPart?.Document?.Save();
@@ -293,16 +294,12 @@ public class DocumentController : Controller
                 CreateNoWindow = true
             };
 
-            if (OperatingSystem.IsLinux())
-            {
-                var profileDir = "/srv/radnik/temp/libreoffice-profile";
-                Directory.CreateDirectory(profileDir);
-
-                var profileUri = new Uri(
-                    profileDir.EndsWith("/") ? profileDir : profileDir + "/").AbsoluteUri;
-
-                psi.ArgumentList.Add($"-env:UserInstallation={profileUri}");
-            }
+            Directory.CreateDirectory(_storagePaths.LibreOfficeProfilePath);
+            var profileUri = new Uri(
+                Path.EndsInDirectorySeparator(_storagePaths.LibreOfficeProfilePath)
+                    ? _storagePaths.LibreOfficeProfilePath
+                    : _storagePaths.LibreOfficeProfilePath + Path.DirectorySeparatorChar).AbsoluteUri;
+            psi.ArgumentList.Add($"-env:UserInstallation={profileUri}");
 
             psi.ArgumentList.Add("--headless");
             psi.ArgumentList.Add("--nologo");
@@ -353,47 +350,17 @@ public class DocumentController : Controller
                 $"PDF nije stvoren. Očekivana putanja: {expectedPdfPath}. STDOUT: {stdout} STDERR: {stderr}");
         }
 
-        private string? ResolveLibreOfficePath()
-        {
-            if (OperatingSystem.IsWindows())
-            {
-                var windowsPaths = new[]
-                {
-                    @"C:\Program Files\LibreOffice\program\soffice.exe",
-                    @"C:\Program Files (x86)\LibreOffice\program\soffice.exe"
-                };
-
-                return windowsPaths.FirstOrDefault(System.IO.File.Exists);
-            }
-
-            if (OperatingSystem.IsLinux())
-            {
-                var linuxPaths = new[]
-                {
-                    "/usr/bin/libreoffice",
-                    "/usr/bin/soffice",
-                    "/snap/bin/libreoffice"
-                };
-
-                return linuxPaths.FirstOrDefault(System.IO.File.Exists);
-            }
-
-            return null;
-        }
+        private string ResolveLibreOfficePath() => _storagePaths.LibreOfficeExecutable;
 
         private string GetGeneratedDocumentsFolder()
         {
-            var folder = OperatingSystem.IsLinux() && Directory.Exists("/srv/radnik")
-                ? "/srv/radnik/temp/GeneratedDocuments"
-                : Path.Combine(_environment.ContentRootPath, "GeneratedDocuments");
-
-            Directory.CreateDirectory(folder);
-            return folder;
+            Directory.CreateDirectory(_storagePaths.GeneratedDocumentsPath);
+            return _storagePaths.GeneratedDocumentsPath;
         }
 
         private string GetTemplatePath(EquipmentType type)
         {
-            var folder = Path.Combine(_environment.ContentRootPath, "Templates");
+            var folder = _storagePaths.TemplatesPath;
 
             return type switch
             {

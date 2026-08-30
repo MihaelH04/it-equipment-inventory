@@ -1,4 +1,5 @@
 using ITEquipmentInventory.Data;
+using ITEquipmentInventory.Configuration;
 using ITEquipmentInventory.Services;
 using ITEquipmentInventory.Services.Search;
 using Microsoft.AspNetCore.Authentication;
@@ -8,18 +9,28 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
+using Microsoft.Data.Sqlite;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Ne koristi dijeljeni korisnički Data Protection spremnik. Ključevi iz njega
 // mogu biti šifrirani DPAPI profilom drugog Windows korisnika, što sprječava
 // pokretanje aplikacije u dotnet watchu.
-var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "data", "data-protection-keys");
-Directory.CreateDirectory(dataProtectionKeysPath);
+builder.Services.Configure<StorageOptions>(
+    builder.Configuration.GetSection(StorageOptions.SectionName));
+
+var storageOptions = builder.Configuration
+    .GetSection(StorageOptions.SectionName)
+    .Get<StorageOptions>() ?? new StorageOptions();
+var storagePaths = new StoragePaths(builder.Environment, Options.Create(storageOptions));
+builder.Services.AddSingleton(storagePaths);
+
+Directory.CreateDirectory(storagePaths.DataProtectionKeysPath);
 
 var dataProtectionBuilder = builder.Services
     .AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+    .PersistKeysToFileSystem(new DirectoryInfo(storagePaths.DataProtectionKeysPath))
     .SetApplicationName("ITEquipmentInventory");
 
 if (OperatingSystem.IsWindows())
@@ -52,9 +63,9 @@ builder.Services
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
 
-        // Za lokalni LAN preko HTTP-a ostavi SameAsRequest.
-        // Ako kasnije aplikacija ide preko HTTPS-a, promijeni u Always.
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SecurePolicy = builder.Environment.IsProduction()
+            ? CookieSecurePolicy.Always
+            : CookieSecurePolicy.SameAsRequest;
 
         options.Events = new CookieAuthenticationEvents
         {
@@ -68,6 +79,30 @@ builder.Services
                 {
                     context.RejectPrincipal();
 
+                    await context.HttpContext.SignOutAsync(
+                        CookieAuthenticationDefaults.AuthenticationScheme
+                    );
+                    return;
+                }
+
+                var userIdClaim = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var securityStampClaim = context.Principal?.FindFirstValue(AppUser.SecurityStampClaimType);
+                if (!int.TryParse(userIdClaim, out var userId) ||
+                    string.IsNullOrWhiteSpace(securityStampClaim))
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(
+                        CookieAuthenticationDefaults.AuthenticationScheme
+                    );
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var user = await db.AppUsers.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                if (user is null || !user.IsActive ||
+                    !string.Equals(user.SecurityStamp, securityStampClaim, StringComparison.Ordinal))
+                {
+                    context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(
                         CookieAuthenticationDefaults.AuthenticationScheme
                     );
@@ -91,71 +126,31 @@ builder.Services.AddAuthorization(options =>
         .Build();
 });
 
-var configuredDbPath =
-    builder.Configuration["DatabasePath"] ??
-    Environment.GetEnvironmentVariable("RADNIK_DB_PATH");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+    throw new InvalidOperationException("ConnectionStrings:DefaultConnection nije konfiguriran.");
 
-string dbPath;
+var sqliteConnection = new SqliteConnectionStringBuilder(connectionString);
+if (string.IsNullOrWhiteSpace(sqliteConnection.DataSource))
+    throw new InvalidOperationException("ConnectionStrings:DefaultConnection mora sadržavati Data Source.");
 
-if (!string.IsNullOrWhiteSpace(configuredDbPath))
+var dbPath = sqliteConnection.DataSource;
+if (!string.Equals(dbPath, ":memory:", StringComparison.OrdinalIgnoreCase) &&
+    !dbPath.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
 {
-    dbPath = Path.GetFullPath(configuredDbPath);
-}
-else if (OperatingSystem.IsLinux() && Directory.Exists("/srv/radnik"))
-{
-    dbPath = "/srv/radnik/data/inventura.db";
-}
-else
-{
-    dbPath = Path.Combine(builder.Environment.ContentRootPath, "inventura.db");
+    dbPath = storagePaths.ResolveFromContentRoot(dbPath);
+    sqliteConnection.DataSource = dbPath;
 }
 
 var databaseDirectory = Path.GetDirectoryName(dbPath);
 if (!string.IsNullOrWhiteSpace(databaseDirectory))
     Directory.CreateDirectory(databaseDirectory);
 
-var configuredProfileImagesPath =
-    builder.Configuration["ProfileImagesPath"] ??
-    Environment.GetEnvironmentVariable("RADNIK_PROFILE_IMAGES_PATH");
-
-string profileImagesPath;
-if (!string.IsNullOrWhiteSpace(configuredProfileImagesPath))
-{
-    profileImagesPath = Path.GetFullPath(configuredProfileImagesPath);
-}
-else if (OperatingSystem.IsLinux() && Directory.Exists("/srv/radnik"))
-{
-    profileImagesPath = "/srv/radnik/data/profile-images";
-}
-else
-{
-    profileImagesPath = Path.Combine(builder.Environment.ContentRootPath, "data", "profile-images");
-}
-Directory.CreateDirectory(profileImagesPath);
-builder.Configuration["ResolvedProfileImagesPath"] = profileImagesPath;
-
-var configuredConsumableImagesPath =
-    builder.Configuration["ConsumableImagesPath"] ??
-    Environment.GetEnvironmentVariable("RADNIK_CONSUMABLE_IMAGES_PATH");
-
-string consumableImagesPath;
-if (!string.IsNullOrWhiteSpace(configuredConsumableImagesPath))
-{
-    consumableImagesPath = Path.GetFullPath(configuredConsumableImagesPath);
-}
-else if (OperatingSystem.IsLinux() && Directory.Exists("/srv/radnik"))
-{
-    consumableImagesPath = "/srv/radnik/data/consumable-images";
-}
-else
-{
-    consumableImagesPath = Path.Combine(builder.Environment.ContentRootPath, "data", "consumable-images");
-}
-Directory.CreateDirectory(consumableImagesPath);
-builder.Configuration["ResolvedConsumableImagesPath"] = consumableImagesPath;
+Directory.CreateDirectory(storagePaths.ProfileImagesPath);
+Directory.CreateDirectory(storagePaths.ConsumableImagesPath);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+    options.UseSqlite(sqliteConnection.ConnectionString));
 
 // Potrebno za sigurnosno logiranje.
 builder.Services.AddHttpContextAccessor();
@@ -187,10 +182,9 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
-
-    // Ako koristiš HTTPS certifikat, možeš uključiti:
-    // app.UseHttpsRedirection();
 }
+
+app.UseHttpsRedirection();
 
 // Sigurnosni HTTP headeri.
 app.Use(async (context, next) =>
@@ -218,7 +212,7 @@ app.Use(async (context, next) =>
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(profileImagesPath),
+    FileProvider = new PhysicalFileProvider(storagePaths.ProfileImagesPath),
     RequestPath = "/profile-images"
 });
 
@@ -237,7 +231,7 @@ app.MapGet("/consumable-images/{fileName}", [Authorize] (string fileName) =>
             System.Text.RegularExpressions.RegexOptions.IgnoreCase))
         return Results.NotFound();
 
-    var fullPath = Path.Combine(consumableImagesPath, safeName);
+    var fullPath = Path.Combine(storagePaths.ConsumableImagesPath, safeName);
     if (!File.Exists(fullPath))
         return Results.NotFound();
 

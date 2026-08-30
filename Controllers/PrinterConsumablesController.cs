@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using ITEquipmentInventory.Data;
+using ITEquipmentInventory.Configuration;
 using ITEquipmentInventory.Models;
 using ITEquipmentInventory.Models.ViewModels;
 using ITEquipmentInventory.Services;
@@ -24,8 +25,7 @@ public class PrinterConsumablesController : Controller
     private const int MaximumModalQuantity = 99;
     private static readonly string[] AllowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
     private readonly AppDbContext _context;
-    private readonly IWebHostEnvironment _environment;
-    private readonly IConfiguration _configuration;
+    private readonly StoragePaths _storagePaths;
     private readonly RecycleBinService _recycleBin;
     private readonly ISearchQueryService _searchQueries;
     private readonly ISearchQueryBuilder _searchBuilder;
@@ -33,16 +33,14 @@ public class PrinterConsumablesController : Controller
 
     public PrinterConsumablesController(
         AppDbContext context,
-        IWebHostEnvironment environment,
-        IConfiguration configuration,
+        StoragePaths storagePaths,
         RecycleBinService recycleBin,
         ISearchQueryService searchQueries,
         ISearchQueryBuilder searchBuilder,
         ISearchFuzzyMatcher fuzzyMatcher)
     {
         _context = context;
-        _environment = environment;
-        _configuration = configuration;
+        _storagePaths = storagePaths;
         _recycleBin = recycleBin;
         _searchQueries = searchQueries;
         _searchBuilder = searchBuilder;
@@ -1772,9 +1770,7 @@ public class PrinterConsumablesController : Controller
         return null;
     }
 
-    private string GetConsumableImageDirectory() =>
-        _configuration["ResolvedConsumableImagesPath"]
-        ?? Path.Combine(_environment.ContentRootPath, "data", "consumable-images");
+    private string GetConsumableImageDirectory() => _storagePaths.ConsumableImagesPath;
 
     private static async Task<string?> DetectImageExtensionAsync(IFormFile image)
     {

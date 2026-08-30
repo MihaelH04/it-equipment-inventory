@@ -50,39 +50,39 @@
 
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label asp-for="PredaoInformatica" class="form-label"></label>
-                        <select asp-for="PredaoInformatica"
+                        <label asp-for="HandedOverByTechnician" class="form-label"></label>
+                        <select asp-for="HandedOverByTechnician"
                                 class="form-select"
                                 asp-items="ViewBag.HandedOverByOptions">
                         </select>
-                        <span asp-validation-for="PredaoInformatica" class="text-danger small"></span>
+                        <span asp-validation-for="HandedOverByTechnician" class="text-danger small"></span>
                     </div>
 
                     <div class="col-md-4">
-                        <label asp-for="DatumZaduzenja" class="form-label"></label>
-                        <input asp-for="DatumZaduzenja"
+                        <label asp-for="AssignedAt" class="form-label"></label>
+                        <input asp-for="AssignedAt"
                                type="datetime-local"
                                class="form-control"
-                               value="@(Model.DatumZaduzenja.HasValue ? Model.DatumZaduzenja.Value.ToString("yyyy-MM-ddTHH:mm") : "")" />
-                        <span asp-validation-for="DatumZaduzenja" class="text-danger small"></span>
+                               value="@(Model.AssignedAt.HasValue ? Model.AssignedAt.Value.ToString("yyyy-MM-ddTHH:mm") : "")" />
+                        <span asp-validation-for="AssignedAt" class="text-danger small"></span>
                     </div>
 
                     <div class="col-md-4">
-                        <label asp-for="PrimioImePrezime" class="form-label"></label>
-                        <input asp-for="PrimioImePrezime" class="form-control" />
-                        <span asp-validation-for="PrimioImePrezime" class="text-danger small"></span>
+                        <label asp-for="RecipientFullName" class="form-label"></label>
+                        <input asp-for="RecipientFullName" class="form-control" />
+                        <span asp-validation-for="RecipientFullName" class="text-danger small"></span>
                     </div>
 
                     <div class="col-md-6">
-                        <label asp-for="NazivRadnogMjesta" class="form-label"></label>
-                        <input asp-for="NazivRadnogMjesta" class="form-control" />
-                        <span asp-validation-for="NazivRadnogMjesta" class="text-danger small"></span>
+                        <label asp-for="JobTitle" class="form-label"></label>
+                        <input asp-for="JobTitle" class="form-control" />
+                        <span asp-validation-for="JobTitle" class="text-danger small"></span>
                     </div>
 
                     <div class="col-md-6">
-                        <label asp-for="NazivMjestaTroska" class="form-label"></label>
-                        <input asp-for="NazivMjestaTroska" class="form-control" />
-                        <span asp-validation-for="NazivMjestaTroska" class="text-danger small"></span>
+                        <label asp-for="CostCenterName" class="form-label"></label>
+                        <input asp-for="CostCenterName" class="form-control" />
+                        <span asp-validation-for="CostCenterName" class="text-danger small"></span>
                     </div>
                 </div>
 
@@ -93,15 +93,15 @@
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label asp-for="BrojOsnovnogSredstva" class="form-label"></label>
-                            <input asp-for="BrojOsnovnogSredstva" class="form-control" />
-                            <span asp-validation-for="BrojOsnovnogSredstva" class="text-danger small"></span>
+                            <label asp-for="AssetNumber" class="form-label"></label>
+                            <input asp-for="AssetNumber" class="form-control" />
+                            <span asp-validation-for="AssetNumber" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="PrinterIliDr" class="form-label"></label>
-                            <input asp-for="PrinterIliDr" class="form-control" />
-                            <span asp-validation-for="PrinterIliDr" class="text-danger small"></span>
+                            <label asp-for="PrinterOrOther" class="form-label"></label>
+                            <input asp-for="PrinterOrOther" class="form-control" />
+                            <span asp-validation-for="PrinterOrOther" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-3">
@@ -117,15 +117,15 @@
                         </div>
 
                         <div class="col-md-3">
-                            <label asp-for="AntivirusniProgram" class="form-label"></label>
-                            <input asp-for="AntivirusniProgram" class="form-control" />
-                            <span asp-validation-for="AntivirusniProgram" class="text-danger small"></span>
+                            <label asp-for="AntivirusProgram" class="form-label"></label>
+                            <input asp-for="AntivirusProgram" class="form-control" />
+                            <span asp-validation-for="AntivirusProgram" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-3">
-                            <label asp-for="OstaliProgrami" class="form-label"></label>
-                            <input asp-for="OstaliProgrami" class="form-control" />
-                            <span asp-validation-for="OstaliProgrami" class="text-danger small"></span>
+                            <label asp-for="OtherPrograms" class="form-label"></label>
+                            <input asp-for="OtherPrograms" class="form-control" />
+                            <span asp-validation-for="OtherPrograms" class="text-danger small"></span>
                         </div>
                     </div>
                 }
@@ -137,9 +137,9 @@
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label asp-for="BrojOsnovnogSredstva" class="form-label"></label>
-                            <input asp-for="BrojOsnovnogSredstva" class="form-control" />
-                            <span asp-validation-for="BrojOsnovnogSredstva" class="text-danger small"></span>
+                            <label asp-for="AssetNumber" class="form-label"></label>
+                            <input asp-for="AssetNumber" class="form-control" />
+                            <span asp-validation-for="AssetNumber" class="text-danger small"></span>
                         </div>
                     </div>
                 }
@@ -151,15 +151,15 @@
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label asp-for="BrojOsnovnogSredstva" class="form-label"></label>
-                            <input asp-for="BrojOsnovnogSredstva" class="form-control" />
-                            <span asp-validation-for="BrojOsnovnogSredstva" class="text-danger small"></span>
+                            <label asp-for="AssetNumber" class="form-label"></label>
+                            <input asp-for="AssetNumber" class="form-control" />
+                            <span asp-validation-for="AssetNumber" class="text-danger small"></span>
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="DodatnaOprema" class="form-label"></label>
-                            <input asp-for="DodatnaOprema" class="form-control" />
-                            <span asp-validation-for="DodatnaOprema" class="text-danger small"></span>
+                            <label asp-for="AdditionalEquipment" class="form-label"></label>
+                            <input asp-for="AdditionalEquipment" class="form-control" />
+                            <span asp-validation-for="AdditionalEquipment" class="text-danger small"></span>
                         </div>
                     </div>
                 }
@@ -177,9 +177,9 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label asp-for="TarifaIBrojMob" class="form-label"></label>
-                            <input asp-for="TarifaIBrojMob" class="form-control" />
-                            <span asp-validation-for="TarifaIBrojMob" class="text-danger small"></span>
+                            <label asp-for="MobilePlanAndNumber" class="form-label"></label>
+                            <input asp-for="MobilePlanAndNumber" class="form-control" />
+                            <span asp-validation-for="MobilePlanAndNumber" class="text-danger small"></span>
                         </div>
                     </div>
                 }

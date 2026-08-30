@@ -2,10 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ITEquipmentInventory.Models
 {
-    public class Equipment
+    public class Equipment : BaseEntity
     {
-        public int Id { get; set; }
-
         [Display(Name = "Inventurni broj")]
         public string? InventoryNumber { get; set; }
 

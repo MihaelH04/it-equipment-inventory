@@ -10,25 +10,25 @@ namespace ITEquipmentInventory.ViewModels
         public Equipment? Equipment { get; set; }
 
         [Display(Name = "Predao informatičar")]
-        public string? PredaoInformatica { get; set; }
+        public string? HandedOverByTechnician { get; set; }
 
         [Display(Name = "Datum zaduženja")]
-        public DateTime? DatumZaduzenja { get; set; }
+        public DateTime? AssignedAt { get; set; }
 
         [Display(Name = "Primio ime i prezime")]
-        public string? PrimioImePrezime { get; set; }
+        public string? RecipientFullName { get; set; }
 
         [Display(Name = "Naziv radnog mjesta")]
-        public string? NazivRadnogMjesta { get; set; }
+        public string? JobTitle { get; set; }
 
         [Display(Name = "Naziv mjesta troška")]
-        public string? NazivMjestaTroska { get; set; }
+        public string? CostCenterName { get; set; }
 
         [Display(Name = "Broj osnovnog sredstva")]
-        public string? BrojOsnovnogSredstva { get; set; }
+        public string? AssetNumber { get; set; }
 
         [Display(Name = "Printer ili dr.")]
-        public string? PrinterIliDr { get; set; }
+        public string? PrinterOrOther { get; set; }
 
         [Display(Name = "Microsoft Windows")]
         public string? MicrosoftWindows { get; set; }
@@ -37,21 +37,21 @@ namespace ITEquipmentInventory.ViewModels
         public string? MicrosoftOffice { get; set; }
 
         [Display(Name = "Antivirusni program")]
-        public string? AntivirusniProgram { get; set; }
+        public string? AntivirusProgram { get; set; }
 
         [Display(Name = "Ostali programi")]
-        public string? OstaliProgrami { get; set; }
+        public string? OtherPrograms { get; set; }
 
         [Display(Name = "Dodatna oprema")]
-        public string? DodatnaOprema { get; set; }
+        public string? AdditionalEquipment { get; set; }
 
         [Display(Name = "IMEI")]
         public string? Imei { get; set; }
 
         [Display(Name = "Tarifa i broj mob.")]
-        public string? TarifaIBrojMob { get; set; }
+        public string? MobilePlanAndNumber { get; set; }
 
         [Display(Name = "SN")]
-        public string? SN { get; set; }
+        public string? SerialNumber { get; set; }
     }
 }

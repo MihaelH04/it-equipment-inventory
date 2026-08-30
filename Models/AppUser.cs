@@ -4,6 +4,8 @@ namespace ITEquipmentInventory.Models;
 
 public class AppUser : BaseEntity
 {
+    public const string SecurityStampClaimType = "SecurityStamp";
+
     [Required]
     [StringLength(50)]
     [Display(Name = "Korisničko ime")]
