@@ -24,9 +24,9 @@ public class EmployeesController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir, int page = 1)
+    public async Task<IActionResult> Index(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir, int page = 1, int pageSize = PaginationConstants.DefaultPageSize)
     {
-        var result = await GetFilteredEmployeesAsync(searchString, statusFilter, siteFilter, sortBy, sortDir, page);
+        var result = await GetFilteredEmployeesAsync(searchString, statusFilter, siteFilter, sortBy, sortDir, page, pageSize);
 
         await LoadEmployeeStatsAsync();
         SetEmployeeListViewBags(searchString, statusFilter, siteFilter, sortBy, sortDir);
@@ -36,9 +36,9 @@ public class EmployeesController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> IndexTable(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir, int page = 1)
+    public async Task<IActionResult> IndexTable(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir, int page = 1, int pageSize = PaginationConstants.DefaultPageSize)
     {
-        var result = await GetFilteredEmployeesAsync(searchString, statusFilter, siteFilter, sortBy, sortDir, page);
+        var result = await GetFilteredEmployeesAsync(searchString, statusFilter, siteFilter, sortBy, sortDir, page, pageSize);
 
         SetEmployeeListViewBags(searchString, statusFilter, siteFilter, sortBy, sortDir);
 
@@ -457,7 +457,7 @@ public class EmployeesController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<PagedResult<Employee>> GetFilteredEmployeesAsync(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir, int? page)
+    private async Task<PagedResult<Employee>> GetFilteredEmployeesAsync(string searchString, string statusFilter, string siteFilter, string sortBy, string sortDir, int? page, int pageSize = PaginationConstants.DefaultPageSize)
     {
         var query = _context.Employees
             .Include(e => e.Site)
@@ -508,14 +508,15 @@ public class EmployeesController : Controller
                 : query.OrderBy(e => e.WorkerCode)
         };
 
+        pageSize = PaginationConstants.AllowedPageSizes.Contains(pageSize) ? pageSize : PaginationConstants.DefaultPageSize;
         var totalCount = await query.CountAsync();
         if (page is null)
-            return new PagedResult<Employee> { Items = await query.ToListAsync(), CurrentPage = 1, TotalPages = 1, TotalCount = totalCount };
+            return new PagedResult<Employee> { Items = await query.ToListAsync(), CurrentPage = 1, TotalPages = 1, TotalCount = totalCount, PageSize = pageSize };
         var currentPage = Math.Max(1, page.Value);
-        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
         currentPage = Math.Min(currentPage, totalPages);
-        var items = await query.Skip((currentPage - 1) * PaginationConstants.DefaultPageSize).Take(PaginationConstants.DefaultPageSize).ToListAsync();
-        return new PagedResult<Employee> { Items = items, CurrentPage = currentPage, TotalPages = totalPages, TotalCount = totalCount };
+        var items = await query.Skip((currentPage - 1) * pageSize).Take(pageSize).ToListAsync();
+        return new PagedResult<Employee> { Items = items, CurrentPage = currentPage, TotalPages = totalPages, TotalCount = totalCount, PageSize = pageSize };
     }
 
     private void SetPaginationViewBags<T>(PagedResult<T> result)

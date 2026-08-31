@@ -3513,6 +3513,41 @@ html[data-theme="dark"] .modal-modern .btn-close {
     font-weight: 900;
 }
 
+/* ---------- Zajednička paginacija tablica ---------- */
+.table-pagination-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .85rem 1rem;
+    padding: .85rem 1rem;
+    border: 1px solid var(--rd-border);
+    border-radius: 18px;
+    background: var(--rd-surface);
+    box-shadow: var(--rd-shadow-sm);
+}
+
+.table-pagination-summary,
+.table-pagination-size {
+    color: var(--rd-text-muted);
+    font-size: .86rem;
+    font-weight: 700;
+}
+
+.table-pagination-summary strong { color: var(--rd-text); font-weight: 900; }
+
+.table-pagination-size { display: inline-flex; align-items: center; gap: .55rem; white-space: nowrap; }
+.table-pagination-size .form-select { width: 78px !important; min-height: 38px; border-radius: 12px !important; }
+
+.table-pagination { grid-column: 1 / -1; display: flex; justify-content: center; gap: .35rem; }
+.table-pagination .page-link { min-width: 38px; min-height: 38px; padding: .45rem .68rem; border-radius: 11px; font-size: .82rem; font-weight: 850; }
+.table-pagination .page-item.active .page-link { border-color: transparent; background: linear-gradient(135deg, var(--rd-primary), var(--rd-primary-strong)); box-shadow: 0 10px 22px color-mix(in srgb, var(--rd-primary) 30%, transparent); }
+
+@media (max-width: 767.98px) {
+    .table-pagination-shell { grid-template-columns: 1fr; padding: .75rem; }
+    .table-pagination-summary, .table-pagination-size { justify-content: center; text-align: center; }
+    .table-pagination { grid-column: 1; }
+}
+
 @media (max-width: 767.98px) {
     .equipment-pagination-shell {
         grid-template-columns: 1fr;

@@ -20,8 +20,9 @@ public class RecycleBinController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? searchString, int page = 1)
+    public async Task<IActionResult> Index(string? searchString, int page = 1, int pageSize = PaginationConstants.DefaultPageSize)
     {
+        pageSize = PaginationConstants.AllowedPageSizes.Contains(pageSize) ? pageSize : PaginationConstants.DefaultPageSize;
         await _recycleBin.PurgeExpiredAsync();
 
         var query = _context.DeletedItems.AsNoTracking()
@@ -37,15 +38,16 @@ public class RecycleBinController : Controller
         }
 
         var totalCount = await query.CountAsync();
-        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
         page = Math.Min(Math.Max(1, page), totalPages);
         ViewBag.SearchString = searchString;
         ViewBag.CurrentPage = page;
+        ViewBag.PageSize = pageSize;
         ViewBag.TotalPages = totalPages;
         ViewBag.FilteredCount = totalCount;
         var items = await query.OrderByDescending(x => x.DeletedAtUtc)
-            .Skip((page - 1) * PaginationConstants.DefaultPageSize)
-            .Take(PaginationConstants.DefaultPageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
         return View(items);

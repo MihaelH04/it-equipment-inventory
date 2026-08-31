@@ -1,8 +1,14 @@
 @using Microsoft.AspNetCore.WebUtilities
+@using ITEquipmentInventory.Models.ViewModels
 @{
     var currentPage = ViewBag.CurrentPage is int current ? current : 1;
     var totalPages = ViewBag.TotalPages is int total ? total : 1;
     var totalCount = ViewBag.FilteredCount is int count ? count : 0;
+    var pageSize = ViewBag.PageSize is int size && PaginationConstants.AllowedPageSizes.Contains(size)
+        ? size
+        : PaginationConstants.DefaultPageSize;
+    var firstItem = totalCount == 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    var lastItem = Math.Min(currentPage * pageSize, totalCount);
     var query = Context.Request.Query.ToDictionary(x => x.Key, x => (string?)x.Value.ToString());
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
@@ -12,6 +18,7 @@
     string PageUrl(int page)
     {
         query["page"] = page.ToString();
+        query["pageSize"] = pageSize.ToString();
         return QueryHelpers.AddQueryString(targetPath, query);
     }
     var start = Math.Max(1, currentPage - 2);
@@ -21,9 +28,21 @@
 
 @if (totalCount > 0)
 {
-    <nav class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3" aria-label="Navigacija kroz stranice">
-        <small class="text-muted">Ukupno: @totalCount</small>
-        <ul class="pagination pagination-sm mb-0 flex-wrap">
+    <nav class="table-pagination-shell mt-3" aria-label="Navigacija kroz stranice">
+        <div class="table-pagination-summary">
+            Prikaz <strong>@firstItem–@lastItem</strong> od <strong>@totalCount</strong> stavki
+        </div>
+        <label class="table-pagination-size">
+            <span>Prikaži</span>
+            <select class="form-select" aria-label="Broj stavki po stranici" onchange="var u=new URL(window.location.href);u.searchParams.set('pageSize',this.value);u.searchParams.set('page','1');window.location.href=u.toString();">
+                @foreach (var allowedSize in PaginationConstants.AllowedPageSizes)
+                {
+                    <option value="@allowedSize" selected="@(allowedSize == pageSize)">@allowedSize</option>
+                }
+            </select>
+            <span>po stranici</span>
+        </label>
+        <ul class="pagination table-pagination mb-0 flex-wrap">
             <li class="page-item @(currentPage == 1 ? "disabled" : "")">
                 <a class="page-link ajax-page-link" href="@PageUrl(Math.Max(1, currentPage - 1))" aria-disabled="@(currentPage == 1)">Prethodna</a>
             </li>

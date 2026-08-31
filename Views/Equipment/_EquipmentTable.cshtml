@@ -1,4 +1,5 @@
 @model IEnumerable<ITEquipmentInventory.Models.Equipment>
+@using ITEquipmentInventory.Models.ViewModels
 
 @{
     string currentSort = ViewBag.CurrentSort as string ?? "";
@@ -286,6 +287,17 @@
             <div class="equipment-pagination-summary">
                 Prikaz <strong>@firstItem–@lastItem</strong> od <strong>@filteredCount</strong> stavki
             </div>
+
+            <label class="equipment-pagination-size">
+                <span>Prikaži</span>
+                <select id="equipmentPageSizeSelect" class="form-select" aria-label="Broj stavki po stranici">
+                    @foreach (var size in PaginationConstants.AllowedPageSizes)
+                    {
+                        <option value="@size" selected="@(size == pageSize)">@size</option>
+                    }
+                </select>
+                <span>po stranici</span>
+            </label>
 
             @if (totalPages > 1)
             {

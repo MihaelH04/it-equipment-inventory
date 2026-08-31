@@ -3,6 +3,7 @@ namespace ITEquipmentInventory.Models.ViewModels;
 public static class PaginationConstants
 {
     public const int DefaultPageSize = 25;
+    public static readonly int[] AllowedPageSizes = [25, 50, 100];
     public const int MaxSearchSuggestionResults = 2000;
     public const int MaxAutocompleteResults = 300;
 }

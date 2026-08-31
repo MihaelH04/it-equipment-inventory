@@ -244,11 +244,11 @@ public class PrinterConsumablesController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? searchString, string? statusFilter, string? sortOrder, int page = 1)
+    public async Task<IActionResult> Index(string? searchString, string? statusFilter, string? sortOrder, int page = 1, int pageSize = PaginationConstants.DefaultPageSize)
     {
         if (User.IsInRole("Admin"))
             await EnsurePendingOrdersBackfilledAsync();
-        var result = await GetFilteredItemsAsync(searchString, statusFilter, sortOrder, page);
+        var result = await GetFilteredItemsAsync(searchString, statusFilter, sortOrder, page, pageSize);
         await LoadStatsAsync();
         await LoadIndexBagsAsync(searchString, statusFilter, sortOrder);
         await LoadFormBagsAsync();
@@ -898,7 +898,7 @@ public class PrinterConsumablesController : Controller
             $"Evidencija_tonera_{from:yyyyMMdd}_{to:yyyyMMdd}.xlsx");
     }
 
-    private async Task<PagedResult<PrinterConsumable>> GetFilteredItemsAsync(string? searchString, string? statusFilter, string? sortOrder, int? page)
+    private async Task<PagedResult<PrinterConsumable>> GetFilteredItemsAsync(string? searchString, string? statusFilter, string? sortOrder, int? page, int pageSize = PaginationConstants.DefaultPageSize)
     {
         var search = _searchQueries.Parse(searchString);
         var matchingIds = search.IsEmpty
@@ -935,18 +935,20 @@ public class PrinterConsumablesController : Controller
             "original_desc" => query.OrderBy(x => x.IsOriginal).ThenBy(x => x.Name),
             _ => query.OrderBy(x => x.Name)
         };
+        pageSize = PaginationConstants.AllowedPageSizes.Contains(pageSize) ? pageSize : PaginationConstants.DefaultPageSize;
         var totalCount = await query.CountAsync(HttpContext.RequestAborted);
         if (page is null)
-            return new PagedResult<PrinterConsumable> { Items = BuildFamilyDisplayItems(await query.ToListAsync(HttpContext.RequestAborted)), CurrentPage = 1, TotalPages = 1, TotalCount = totalCount };
-        var currentPage = Math.Min(Math.Max(1, page.Value), Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize)));
-        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PaginationConstants.DefaultPageSize));
-        var items = await query.Skip((currentPage - 1) * PaginationConstants.DefaultPageSize).Take(PaginationConstants.DefaultPageSize).ToListAsync(HttpContext.RequestAborted);
-        return new PagedResult<PrinterConsumable> { Items = BuildFamilyDisplayItems(items), CurrentPage = currentPage, TotalPages = totalPages, TotalCount = totalCount };
+            return new PagedResult<PrinterConsumable> { Items = BuildFamilyDisplayItems(await query.ToListAsync(HttpContext.RequestAborted)), CurrentPage = 1, TotalPages = 1, TotalCount = totalCount, PageSize = pageSize };
+        var currentPage = Math.Min(Math.Max(1, page.Value), Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize)));
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+        var items = await query.Skip((currentPage - 1) * pageSize).Take(pageSize).ToListAsync(HttpContext.RequestAborted);
+        return new PagedResult<PrinterConsumable> { Items = BuildFamilyDisplayItems(items), CurrentPage = currentPage, TotalPages = totalPages, TotalCount = totalCount, PageSize = pageSize };
     }
 
     private void SetPaginationViewBags<T>(PagedResult<T> result)
     {
         ViewBag.CurrentPage = result.CurrentPage;
+        ViewBag.PageSize = result.PageSize;
         ViewBag.TotalPages = result.TotalPages;
         ViewBag.FilteredCount = result.TotalCount;
     }
