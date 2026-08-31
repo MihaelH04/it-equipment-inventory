@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Zaposlenici";
+    var isAdmin = User.IsInRole("Admin");
 }
 
 <div class="container mt-4">
@@ -30,7 +31,10 @@
                data-export-base-url="@Url.Action("ExportExcel", "Employees")">
                 Izvoz Excel
             </a>
-            <a asp-action="Create" class="btn btn-primary" data-add-new>Dodaj zaposlenika</a>
+            @if (isAdmin)
+            {
+                <a asp-action="Create" class="btn btn-primary" data-add-new>Dodaj zaposlenika</a>
+            }
         </div>
     </div>
 

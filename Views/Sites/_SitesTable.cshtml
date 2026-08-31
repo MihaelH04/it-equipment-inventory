@@ -6,6 +6,7 @@
     string currentSortDir = ViewBag.SortDir as string ?? "asc";
     string currentSearch  = ViewBag.SearchString as string ?? "";
     string currentStatus  = ViewBag.StatusFilter as string ?? "";
+    var isAdmin = User.IsInRole("Admin");
 
     string SortIcon(string column)
     {
@@ -147,6 +148,17 @@
     </div>
     @await Html.PartialAsync("_Pagination")
 </form>
+
+@if (!isAdmin)
+{
+    <style>
+        #sitesBulkForm > .bulk-toolbar,
+        #sitesBulkForm th:first-child,
+        #sitesBulkForm td:first-child,
+        #sitesBulkForm th:last-child,
+        #sitesBulkForm td:last-child { display: none; }
+    </style>
+}
 
 <script>
     function validateSitesBulkEdit(form) {

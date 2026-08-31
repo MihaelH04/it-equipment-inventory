@@ -18,7 +18,7 @@ using OfficeOpenXml.Table;
 
 namespace ITEquipmentInventory.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class PrinterConsumablesController : Controller
 {
     private const int MaximumQuantity = 100000;
@@ -246,7 +246,8 @@ public class PrinterConsumablesController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(string? searchString, string? statusFilter, string? sortOrder, int page = 1)
     {
-        await EnsurePendingOrdersBackfilledAsync();
+        if (User.IsInRole("Admin"))
+            await EnsurePendingOrdersBackfilledAsync();
         var result = await GetFilteredItemsAsync(searchString, statusFilter, sortOrder, page);
         await LoadStatsAsync();
         await LoadIndexBagsAsync(searchString, statusFilter, sortOrder);
@@ -280,6 +281,7 @@ public class PrinterConsumablesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create()
     {
         await LoadFormBagsAsync();
@@ -292,6 +294,7 @@ public class PrinterConsumablesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create(PrinterConsumableCreateViewModel model)
     {
         NormalizeModel(model);
@@ -355,6 +358,7 @@ public class PrinterConsumablesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id)
     {
         var item = await _context.PrinterConsumables
@@ -387,6 +391,7 @@ public class PrinterConsumablesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id, PrinterConsumableEditViewModel model)
     {
         if (id != model.Id)
@@ -511,6 +516,7 @@ public class PrinterConsumablesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Order(
         int id,
         int cyanQuantity,
@@ -556,6 +562,7 @@ public class PrinterConsumablesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Receive(
         int? orderId,
         int? id,
@@ -725,6 +732,7 @@ public class PrinterConsumablesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Use(
         int id,
         int cyanQuantity,
@@ -798,6 +806,7 @@ public class PrinterConsumablesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id, string? returnUrl)
     {
         var item = await _context.PrinterConsumables

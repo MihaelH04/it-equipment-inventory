@@ -2,6 +2,7 @@ using ITEquipmentInventory.Data;
 using ITEquipmentInventory.Configuration;
 using ITEquipmentInventory.Services;
 using ITEquipmentInventory.Services.Search;
+using ITEquipmentInventory.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -11,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Microsoft.Data.Sqlite;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 

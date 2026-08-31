@@ -11,7 +11,7 @@ using System.Text;
 
 namespace ITEquipmentInventory.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class EmployeesController : Controller
 {
     private readonly AppDbContext _context;
@@ -148,6 +148,7 @@ public class EmployeesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult DeleteSelected(int[] selectedIds)
     {
         if (selectedIds == null || selectedIds.Length == 0)
@@ -161,6 +162,7 @@ public class EmployeesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteSelectedConfirm()
     {
         var selectedIdsRaw = TempData["SelectedEmployeeDeleteIds"] as string;
@@ -195,6 +197,7 @@ public class EmployeesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteSelectedConfirmed(int[] selectedIds)
     {
         if (selectedIds == null || selectedIds.Length == 0)
@@ -230,6 +233,7 @@ public class EmployeesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult BulkEdit(int[] selectedIds)
     {
         if (selectedIds == null || selectedIds.Length == 0)
@@ -243,6 +247,7 @@ public class EmployeesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> BulkEdit()
     {
         var selectedIdsRaw = TempData["SelectedEmployeeIds"] as string;
@@ -271,6 +276,7 @@ public class EmployeesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> BulkEditSave(EmployeeBulkEditViewModel model)
     {
         if (model.SelectedIds == null || model.SelectedIds.Count == 0)
@@ -305,6 +311,7 @@ public class EmployeesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create()
     {
         await LoadSiteLookupDataAsync();
@@ -314,6 +321,7 @@ public class EmployeesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create(EmployeeCreateViewModel model)
     {
         if (!ModelState.IsValid)
@@ -338,6 +346,7 @@ public class EmployeesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id)
     {
         var employee = await _context.Employees
@@ -366,6 +375,7 @@ public class EmployeesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id, EmployeeEditViewModel model)
     {
         if (id != model.Id)
@@ -406,6 +416,7 @@ public class EmployeesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var employee = await _context.Employees
@@ -423,6 +434,7 @@ public class EmployeesController : Controller
 
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var employee = await _context.Employees.FindAsync(id);

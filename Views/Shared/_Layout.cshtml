@@ -171,7 +171,7 @@
                     <span class="nav-text">Moj profil</span>
                 </a>
 
-                @if (isAdmin)
+                @if (User?.Identity?.IsAuthenticated == true)
                 {
                     <div class="sidebar-section-title">Evidencija</div>
 
@@ -235,6 +235,8 @@
                         <span class="nav-text">Razduženja</span>
                     </a>
 
+                    @if (isAdmin)
+                    {
                     <div class="sidebar-section-title">Administracija</div>
 
                     <a class="sidebar-link @(controller == "Account" && action == "Users" ? "active" : "")"
@@ -288,6 +290,7 @@
                         </span>
                         <span class="nav-text">Uvoz opreme</span>
                     </a>
+                    }
                 }
             </nav>
 

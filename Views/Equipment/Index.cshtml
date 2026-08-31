@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Oprema";
+    var isAdmin = User.IsInRole("Admin");
 }
 
 <div class="container-fluid py-4 admin-shell equipment-page">
@@ -27,9 +28,12 @@
                     Izvoz Excel
                 </a>
 
-                <a asp-controller="Equipment" asp-action="Create" class="btn btn-primary equipment-header-btn" data-add-new>
-                    Dodaj opremu/ Zaduženje
-                </a>
+                @if (isAdmin)
+                {
+                    <a asp-controller="Equipment" asp-action="Create" class="btn btn-primary equipment-header-btn" data-add-new>
+                        Dodaj opremu/ Zaduženje
+                    </a>
+                }
             </div>
         </div>
     </div>
@@ -135,6 +139,8 @@
     </div>
 </div>
 
+@if (isAdmin)
+{
 <div class="modal fade modal-modern" id="bulkDeleteConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -155,6 +161,7 @@
         </div>
     </div>
 </div>
+}
 
 @section Scripts {
 <script>

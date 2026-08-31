@@ -9,6 +9,7 @@
     var printerSiteMapJson = ViewBag.PrinterSiteMapJson as string ?? "{}";
     var printerOptionsJson = ViewBag.PrinterNameOptionsJson as string ?? "[]";
     var returnUrl = Context.Request.Path.ToString() + Context.Request.QueryString.ToString();
+    var isAdmin = User.IsInRole("Admin");
 
     string TypeText(ConsumableType type) => type switch
     {
@@ -32,7 +33,11 @@
         <div>
             <span class="consumables-kicker">Kontrola zalihe</span>
             <h1 class="mb-1">Toneri, tinte i održavanje</h1>
-            <p class="text-muted mb-0">Klikni na proizvod, odmah pregledaj stanje i odaberi naručivanje, zaprimanje, uređivanje ili izdavanje.</p>
+            <p class="text-muted mb-0">
+                @(isAdmin
+                    ? "Klikni na proizvod, odmah pregledaj stanje i odaberi naručivanje, zaprimanje, uređivanje ili izdavanje."
+                    : "Klikni na proizvod za pregled dostupnog i naručenog stanja.")
+            </p>
         </div>
         <div class="consumables-header-actions">
             <a asp-action="History" class="btn btn-outline-primary">Mjesečna evidencija</a>
@@ -41,7 +46,10 @@
                asp-route-statusFilter="@currentStatus"
                asp-route-sortOrder="@currentSort"
                class="btn btn-outline-success">Izvoz Excel</a>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createConsumableModal">＋ Dodaj proizvod</button>
+            @if (isAdmin)
+            {
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createConsumableModal">＋ Dodaj proizvod</button>
+            }
         </div>
     </div>
 
@@ -225,6 +233,14 @@
         </div>
     </div>
 </div>
+
+@if (!isAdmin)
+{
+    <style>
+        .action-grid,
+        .consumable-action-delete { display: none; }
+    </style>
+}
 
 <div class="modal fade modal-modern" id="createConsumableModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">

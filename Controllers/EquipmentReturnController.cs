@@ -10,7 +10,7 @@ using System.Text;
 
 namespace ITEquipmentInventory.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class EquipmentReturnController : Controller
 {
     private readonly AppDbContext _context;
@@ -158,6 +158,7 @@ public class EquipmentReturnController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Restore(int id)
     {
         var item = await _context.EquipmentReturns.FirstOrDefaultAsync(x => x.Id == id);
@@ -189,6 +190,7 @@ public class EquipmentReturnController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id)
     {
         var item = await _context.EquipmentReturns.FirstOrDefaultAsync(x => x.Id == id);
@@ -218,6 +220,7 @@ public class EquipmentReturnController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id, EquipmentReturnEditViewModel model)
     {
         if (id != model.Id)
@@ -253,6 +256,7 @@ public class EquipmentReturnController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var item = await _context.EquipmentReturns.FirstOrDefaultAsync(x => x.Id == id);
@@ -267,6 +271,7 @@ public class EquipmentReturnController : Controller
 
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var item = await _context.EquipmentReturns.FirstOrDefaultAsync(x => x.Id == id);

@@ -3,6 +3,7 @@
 @{
     string currentSort = ViewBag.CurrentSort as string ?? "";
     string currentSearch = ViewBag.SearchString as string ?? "";
+    var isAdmin = User.IsInRole("Admin");
 
     string SortIcon(string ascKey, string descKey)
     {
@@ -70,3 +71,11 @@
     </div>
 </div>
 @await Html.PartialAsync("_Pagination")
+
+@if (!isAdmin)
+{
+    <style>
+        .returns-table th:last-child,
+        .returns-table td:last-child { display: none; }
+    </style>
+}

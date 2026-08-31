@@ -10,7 +10,7 @@ using System.Text;
 
 namespace ITEquipmentInventory.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class SitesController : Controller
 {
     private readonly AppDbContext _context;
@@ -138,6 +138,7 @@ public class SitesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult DeleteSelected(int[] selectedIds)
     {
         if (selectedIds == null || selectedIds.Length == 0)
@@ -151,6 +152,7 @@ public class SitesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteSelectedConfirm()
     {
         var selectedIdsRaw = TempData["SelectedSiteDeleteIds"] as string;
@@ -184,6 +186,7 @@ public class SitesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteSelectedConfirmed(int[] selectedIds)
     {
         if (selectedIds == null || selectedIds.Length == 0)
@@ -216,6 +219,7 @@ public class SitesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public IActionResult BulkEdit()
     {
         var selectedIdsRaw = TempData["SelectedSiteIds"] as string;
@@ -243,6 +247,7 @@ public class SitesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult BulkEdit(int[] selectedIds)
     {
         if (selectedIds == null || selectedIds.Length == 0)
@@ -257,6 +262,7 @@ public class SitesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> BulkEditSave(SiteBulkEditViewModel model)
     {
         if (model.SelectedIds == null || model.SelectedIds.Count == 0)
@@ -291,6 +297,7 @@ public class SitesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public IActionResult Create()
     {
         return View(new SiteCreateViewModel { Status = SiteStatus.Aktivno });
@@ -298,6 +305,7 @@ public class SitesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create(SiteCreateViewModel model)
     {
         if (!ModelState.IsValid)
@@ -318,6 +326,7 @@ public class SitesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id)
     {
         var site = await _context.Sites.FirstOrDefaultAsync(s => s.Id == id);
@@ -340,6 +349,7 @@ public class SitesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id, SiteEditViewModel model)
     {
         if (id != model.Id)
@@ -366,6 +376,7 @@ public class SitesController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var site = await _context.Sites.FirstOrDefaultAsync(s => s.Id == id);
@@ -381,6 +392,7 @@ public class SitesController : Controller
 
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var site = await _context.Sites.FindAsync(id);

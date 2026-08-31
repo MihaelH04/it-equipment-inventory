@@ -11,7 +11,7 @@ using System.Text;
 
 namespace ITEquipmentInventory.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class EquipmentController : Controller
 {
     private readonly AppDbContext _context;
@@ -76,6 +76,7 @@ public class EquipmentController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult DeleteSelected(int[] selectedIds)
     {
         if (selectedIds == null || selectedIds.Length == 0)
@@ -89,6 +90,7 @@ public class EquipmentController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteSelectedConfirm()
     {
         var selectedIdsRaw = TempData["SelectedEquipmentDeleteIds"] as string;
@@ -124,6 +126,7 @@ public class EquipmentController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteSelectedConfirmed(int[] selectedIds)
     {
         if (selectedIds == null || selectedIds.Length == 0)
@@ -153,6 +156,7 @@ public class EquipmentController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public IActionResult BulkEdit(int[] selectedIds)
     {
         if (selectedIds == null || selectedIds.Length == 0)
@@ -166,6 +170,7 @@ public class EquipmentController : Controller
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> BulkEdit()
     {
         var selectedIdsRaw = TempData["SelectedEquipmentIds"] as string;
@@ -194,6 +199,7 @@ public class EquipmentController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> BulkEditSave(EquipmentBulkEditViewModel model)
     {
         if (model.SelectedIds == null || model.SelectedIds.Count == 0)
@@ -269,6 +275,7 @@ public class EquipmentController : Controller
 
   [HttpPost]
 [ValidateAntiForgeryToken]
+[Authorize(Roles = "Admin")]
 public IActionResult BulkReturn(int[] selectedIds)
 {
     if (selectedIds == null || selectedIds.Length == 0)
@@ -282,6 +289,7 @@ public IActionResult BulkReturn(int[] selectedIds)
 }
 
 [HttpGet]
+[Authorize(Roles = "Admin")]
 public async Task<IActionResult> BulkReturnDecision()
 {
     var selectedIdsRaw = TempData["SelectedEquipmentReturnIds"] as string;
@@ -326,6 +334,7 @@ public async Task<IActionResult> BulkReturnDecision()
 
 [HttpPost]
 [ValidateAntiForgeryToken]
+[Authorize(Roles = "Admin")]
 public async Task<IActionResult> BulkReturnDecisionSave(EquipmentBulkReturnDecisionViewModel model)
 {
     if (model.SelectedIds == null || model.SelectedIds.Count == 0)
@@ -452,6 +461,7 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
 
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create()
     {
         await LoadLookupDataAsync();
@@ -465,6 +475,7 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create(EquipmentCreateViewModel model)
     {
         if (model.AssignedAt.HasValue)
@@ -520,6 +531,7 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id)
     {
         var equipment = await _context.Equipment
@@ -555,6 +567,7 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id, EquipmentEditViewModel model)
     {
         if (id != model.Id)
@@ -642,6 +655,7 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
     }
 
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var equipment = await _context.Equipment
@@ -660,6 +674,7 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
 
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
         var equipment = await _context.Equipment.FindAsync(id);

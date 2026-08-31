@@ -10,6 +10,7 @@
     int filteredCount = ViewBag.FilteredCount is int filteredCountValue ? filteredCountValue : Model.Count();
     int firstItem = ViewBag.FirstItem is int firstItemValue ? firstItemValue : (filteredCount == 0 ? 0 : 1);
     int lastItem = ViewBag.LastItem is int lastItemValue ? lastItemValue : Model.Count();
+    var isAdmin = User.IsInRole("Admin");
 
     int startPage = Math.Max(1, currentPage - 2);
     int endPage = Math.Min(totalPages, startPage + 4);
@@ -57,7 +58,7 @@
         <div class="table-responsive equipment-table-responsive">
             <table class="table modern-table equipment-table-fit align-middle">
                 <colgroup>
-                    <col class="eq-col-check" />
+                    @if (isAdmin) { <col class="eq-col-check" /> }
                     <col class="eq-col-inventory" />
                     <col class="eq-col-serial" />
                     <col class="eq-col-type" />
@@ -67,14 +68,14 @@
                     <col class="eq-col-employee" />
                     <col class="eq-col-date" />
                     <col class="eq-col-handed" />
-                    <col class="eq-col-actions" />
+                    @if (isAdmin) { <col class="eq-col-actions" /> }
                 </colgroup>
 
                 <thead>
                     <tr>
-                        <th class="eq-check" aria-label="Odaberi sve">
+                        @if (isAdmin) { <th class="eq-check" aria-label="Odaberi sve">
                             <input type="checkbox" id="selectAllEquipment" aria-label="Odaberi svu opremu" />
-                        </th>
+                        </th> }
 
                         <th class="eq-inventory">
                             <a href="@Url.Action("IndexTable", "Equipment", new { searchString = currentSearch, statusFilter = currentStatusFilter, sortOrder = ViewBag.InventorySort, page = 1, pageSize })"
@@ -141,7 +142,7 @@
                         </th>
 
                         <th class="eq-handed">Zadužio</th>
-                        <th class="eq-actions">Akcije</th>
+                        @if (isAdmin) { <th class="eq-actions">Akcije</th> }
                     </tr>
                 </thead>
 
@@ -151,12 +152,12 @@
                         foreach (var item in Model)
                         {
                             <tr class="row-selector">
-                                <td class="eq-check" data-label="Odabir">
+                                @if (isAdmin) { <td class="eq-check" data-label="Odabir">
                                     <input type="checkbox"
                                            name="selectedIds"
                                            value="@item.Id"
                                            class="row-checkbox hidden-row-checkbox" />
-                                </td>
+                                </td> }
 
                                 <td class="inventory-text eq-inventory" data-label="Inv. br." title="@item.InventoryNumber">
                                     @item.InventoryNumber
@@ -233,7 +234,7 @@
                                     @(string.IsNullOrWhiteSpace(item.HandedOverBy) ? "-" : item.HandedOverBy)
                                 </td>
 
-                                <td class="eq-actions" data-label="Akcije">
+                                @if (isAdmin) { <td class="eq-actions" data-label="Akcije">
                                     <div class="equipment-actions">
                                         <a asp-controller="Document"
                                            asp-action="Generate"
@@ -260,14 +261,14 @@
                                             <span class="equipment-action-text">Obriši</span>
                                         </a>
                                     </div>
-                                </td>
+                                </td> }
                             </tr>
                         }
                     }
                     else
                     {
                         <tr class="equipment-empty-row">
-                            <td colspan="11" class="equipment-empty-cell">
+                            <td colspan="@(isAdmin ? 11 : 9)" class="equipment-empty-cell">
                                 <div class="empty-state-modern">
                                     Nema pronađene opreme za odabrane filtere.
                                 </div>
@@ -355,6 +356,15 @@
     }
 
 </form>
+
+@if (!isAdmin)
+{
+    <style>
+        #equipmentBulkForm > .bulk-toolbar,
+        #equipmentBulkForm .eq-check,
+        #equipmentBulkForm .eq-actions { display: none; }
+    </style>
+}
 
 <script>
     function validateEquipmentBulkEdit(form) {
