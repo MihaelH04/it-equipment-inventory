@@ -19,11 +19,16 @@ public class DocumentController : Controller
     {
         private readonly AppDbContext _context;
         private readonly StoragePaths _storagePaths;
+        private readonly ILogger<DocumentController> _logger;
 
-        public DocumentController(AppDbContext context, StoragePaths storagePaths)
+        public DocumentController(
+            AppDbContext context,
+            StoragePaths storagePaths,
+            ILogger<DocumentController> logger)
         {
             _context = context;
             _storagePaths = storagePaths;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -89,7 +94,12 @@ public class DocumentController : Controller
             var templatePath = GetTemplatePath(equipment.EquipmentType);
             if (string.IsNullOrWhiteSpace(templatePath) || !System.IO.File.Exists(templatePath))
             {
-                ModelState.AddModelError(string.Empty, $"Template nije pronađen: {templatePath}");
+                _logger.LogError(
+                    "Document template was not found for equipment {EquipmentId} ({EquipmentType}). Expected path: {TemplatePath}.",
+                    equipment.Id,
+                    equipment.EquipmentType,
+                    templatePath);
+                ModelState.AddModelError(string.Empty, "Predložak dokumenta nije pronađen za ovu vrstu opreme.");
                 return View("Generate", model);
             }
 
@@ -146,17 +156,20 @@ public class DocumentController : Controller
                     doc.MainDocumentPart?.Document?.Save();
                 }
 
-                if (!System.IO.File.Exists(tempDocxPath))
+                if (!System.IO.File.Exists(tempDocxPath) || new FileInfo(tempDocxPath).Length == 0)
                 {
-                    ModelState.AddModelError(string.Empty, "DOCX nije kreiran.");
+                    _logger.LogError("Generated DOCX is missing or empty for equipment {EquipmentId}.", equipment.Id);
+                    ModelState.AddModelError(string.Empty, "Dokument nije moguće generirati. Provjerite predložak dokumenta.");
                     return View("Generate", model);
                 }
 
-                var finalPdfPath = ConvertDocxToPdfWithLibreOffice(tempDocxPath, generatedFolder);
+                var finalPdfPath = await ConvertDocxToPdfWithLibreOfficeAsync(tempDocxPath, generatedFolder);
 
-                if (!System.IO.File.Exists(finalPdfPath))
+                if (!System.IO.File.Exists(finalPdfPath) || new FileInfo(finalPdfPath).Length == 0)
                 {
-                    ModelState.AddModelError(string.Empty, "PDF nije generiran.");
+                    _logger.LogError("Generated PDF is missing or empty for equipment {EquipmentId}.", equipment.Id);
+                    ModelState.AddModelError(string.Empty,
+                        "PDF nije moguće generirati. Provjerite instalaciju LibreOfficea i konfiguraciju dokument predložaka.");
                     return View("Generate", model);
                 }
 
@@ -170,7 +183,9 @@ public class DocumentController : Controller
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError(string.Empty, $"Greška kod generiranja PDF-a: {ex.Message}");
+                _logger.LogError(ex, "PDF generation failed for equipment {EquipmentId}.", equipment.Id);
+                ModelState.AddModelError(string.Empty,
+                    "PDF nije moguće generirati. Provjerite instalaciju LibreOfficea i konfiguraciju dokument predložaka.");
                 TryDeleteFile(tempDocxPath);
                 return View("Generate", model);
             }
@@ -260,19 +275,21 @@ public class DocumentController : Controller
             }
         }
 
-        private string ConvertDocxToPdfWithLibreOffice(string docxPath, string outDir)
+        private async Task<string> ConvertDocxToPdfWithLibreOfficeAsync(string docxPath, string outDir)
         {
-            if (!System.IO.File.Exists(docxPath))
-                throw new Exception($"DOCX za konverziju ne postoji: {docxPath}");
+            if (!System.IO.File.Exists(docxPath) || new FileInfo(docxPath).Length == 0)
+                throw new InvalidOperationException("DOCX za konverziju ne postoji ili je prazan.");
 
             Directory.CreateDirectory(outDir);
 
             var soffice = ResolveLibreOfficePath();
 
-            if (string.IsNullOrWhiteSpace(soffice))
+            if (string.IsNullOrWhiteSpace(soffice) || !System.IO.File.Exists(soffice))
             {
-                throw new Exception(
-                    "LibreOffice nije pronađen. Na Linuxu instaliraj: sudo apt install libreoffice libreoffice-writer");
+                _logger.LogError(
+                    "LibreOffice executable was not found. Configured value: {ConfiguredExecutable}.",
+                    _storagePaths.LibreOfficeExecutable);
+                throw new InvalidOperationException("LibreOffice executable nije pronađen.");
             }
 
             var fullDocxPath = Path.GetFullPath(docxPath);
@@ -310,13 +327,19 @@ public class DocumentController : Controller
             psi.ArgumentList.Add(fullOutDir);
             psi.ArgumentList.Add(fullDocxPath);
 
+            _logger.LogInformation(
+                "Starting LibreOffice PDF conversion. Executable: {Executable}; Input: {InputDocx}; Output directory: {OutputDirectory}.",
+                soffice,
+                fullDocxPath,
+                fullOutDir);
+
             using var process = Process.Start(psi);
 
             if (process == null)
-                throw new Exception("LibreOffice proces nije mogao biti pokrenut.");
+                throw new InvalidOperationException("LibreOffice proces nije mogao biti pokrenut.");
 
-            var stdout = process.StandardOutput.ReadToEnd();
-            var stderr = process.StandardError.ReadToEnd();
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
             var exited = process.WaitForExit(60000);
 
             if (!exited)
@@ -329,28 +352,94 @@ public class DocumentController : Controller
                 {
                 }
 
-                throw new Exception("LibreOffice konverzija je istekla nakon 60 sekundi.");
+                await Task.WhenAll(stdoutTask, stderrTask);
+                throw new TimeoutException("LibreOffice konverzija je istekla nakon 60 sekundi.");
             }
+
+            await Task.WhenAll(stdoutTask, stderrTask);
+            var stdout = stdoutTask.Result;
+            var stderr = stderrTask.Result;
+
+            _logger.LogInformation(
+                "LibreOffice PDF conversion ended. Exit code: {ExitCode}; STDOUT: {Stdout}; STDERR: {Stderr}.",
+                process.ExitCode,
+                stdout,
+                stderr);
 
             if (process.ExitCode != 0)
             {
-                throw new Exception(
-                    $"LibreOffice greška. ExitCode: {process.ExitCode}. STDERR: {stderr}. STDOUT: {stdout}");
+                throw new InvalidOperationException($"LibreOffice returned exit code {process.ExitCode}.");
             }
 
             for (var i = 0; i < 20; i++)
             {
-                if (System.IO.File.Exists(expectedPdfPath))
+                if (System.IO.File.Exists(expectedPdfPath) && new FileInfo(expectedPdfPath).Length > 0)
                     return expectedPdfPath;
 
                 Thread.Sleep(300);
             }
 
-            throw new Exception(
-                $"PDF nije stvoren. Očekivana putanja: {expectedPdfPath}. STDOUT: {stdout} STDERR: {stderr}");
+            throw new InvalidOperationException("LibreOffice nije stvorio PDF datoteku.");
         }
 
-        private string ResolveLibreOfficePath() => _storagePaths.LibreOfficeExecutable;
+        private string? ResolveLibreOfficePath()
+        {
+            var configuredPath = _storagePaths.LibreOfficeExecutable;
+            if (Path.IsPathFullyQualified(configuredPath) && System.IO.File.Exists(configuredPath))
+                return Path.GetFullPath(configuredPath);
+
+            if (!string.IsNullOrWhiteSpace(configuredPath) &&
+                !string.Equals(configuredPath, "soffice", StringComparison.OrdinalIgnoreCase))
+            {
+                var contentRootCandidate = _storagePaths.ResolveFromContentRoot(configuredPath);
+                if (System.IO.File.Exists(contentRootCandidate))
+                    return contentRootCandidate;
+            }
+
+            var pathExecutable = FindExecutableOnPath(configuredPath);
+            if (pathExecutable != null)
+                return pathExecutable;
+
+            if (OperatingSystem.IsWindows())
+            {
+                var standardLocations = new[]
+                {
+                    @"C:\Program Files\LibreOffice\program\soffice.exe",
+                    @"C:\Program Files (x86)\LibreOffice\program\soffice.exe"
+                };
+
+                return standardLocations.FirstOrDefault(System.IO.File.Exists);
+            }
+
+            return configuredPath;
+        }
+
+        private static string? FindExecutableOnPath(string executableName)
+        {
+            if (string.IsNullOrWhiteSpace(executableName) ||
+                executableName.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
+                executableName.IndexOf(Path.AltDirectorySeparatorChar) >= 0)
+            {
+                return null;
+            }
+
+            var fileNames = OperatingSystem.IsWindows() && !executableName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                ? new[] { executableName + ".exe", executableName }
+                : new[] { executableName };
+
+            foreach (var directory in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+                         .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                foreach (var fileName in fileNames)
+                {
+                    var candidate = Path.Combine(directory, fileName);
+                    if (System.IO.File.Exists(candidate))
+                        return candidate;
+                }
+            }
+
+            return null;
+        }
 
         private string GetGeneratedDocumentsFolder()
         {
@@ -365,7 +454,7 @@ public class DocumentController : Controller
             return type switch
             {
                 EquipmentType.PC => Path.Combine(folder, "PCTemplate-3.docx"),
-                EquipmentType.Laptop => Path.Combine(folder, "PCTemplate-3.docx"),
+                EquipmentType.Laptop => Path.Combine(folder, "LaptopTemplate.docx"),
                 EquipmentType.Monitor => Path.Combine(folder, "MonitorTemplate-2.docx"),
                 EquipmentType.Tablet => Path.Combine(folder, "TabletTemplate-4.docx"),
                 EquipmentType.Mobitel => Path.Combine(folder, "MobitelTemplate.docx"),
