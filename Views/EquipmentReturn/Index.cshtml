@@ -51,7 +51,7 @@
         <div class="card-body">
             <div class="filter-title">Pretraga razduženja</div>
 
-            <form id="equipmentReturnFilterForm" class="row g-3">
+            <form id="equipmentReturnFilterForm" method="get" asp-action="Index" class="row g-3">
                 <div class="col-lg-9 autocomplete-search-wrap">
                     <input type="text"
                            id="equipmentReturnMainSearch"
@@ -68,6 +68,8 @@
                     <button type="button" id="resetReturnFiltersBtn" class="btn btn-outline-secondary w-100 rounded-4 fw-bold">Reset</button>
                 </div>
                 <input type="hidden" name="sortOrder" id="returnSortOrderInput" value="@(ViewBag.CurrentSort ?? "")" />
+                <input type="hidden" name="page" id="returnPageInput" value="@(ViewBag.CurrentPage ?? 1)" />
+                <input type="hidden" name="pageSize" id="returnPageSizeInput" value="@(ViewBag.PageSize ?? 25)" />
             </form>
         </div>
     </div>
@@ -92,7 +94,7 @@
             });
 
             host.innerHTML = await response.text();
-            wireReturnSortLinks();
+            wireReturnTableUi();
             window.setupExportLinksFromForms();
             if (updateHistory) window.updateSearchUrlFromForm(form, false);
         } catch (e) {
@@ -102,12 +104,24 @@
         }
     }
 
-    function wireReturnSortLinks() {
+    function wireReturnTableUi() {
         document.querySelectorAll('.ajax-return-sort-link').forEach(link => {
             link.addEventListener('click', function (e) {
                 e.preventDefault();
                 const url = new URL(this.href);
                 document.getElementById('returnSortOrderInput').value = url.searchParams.get('sortOrder') ?? '';
+                document.getElementById('returnPageInput').value = '1';
+                loadEquipmentReturnTable();
+            });
+        });
+
+        document.querySelectorAll('#equipmentReturnTableHost .ajax-page-link').forEach(link => {
+            link.addEventListener('click', function (e) {
+                if (this.closest('.page-item')?.classList.contains('disabled')) return;
+                e.preventDefault();
+                const url = new URL(this.href, window.location.origin);
+                document.getElementById('returnPageInput').value = url.searchParams.get('page') ?? '1';
+                document.getElementById('returnPageSizeInput').value = url.searchParams.get('pageSize') ?? '25';
                 loadEquipmentReturnTable();
             });
         });
@@ -115,13 +129,15 @@
 
     document.getElementById('equipmentReturnFilterForm').addEventListener('submit', function (e) {
         e.preventDefault();
+        document.getElementById('returnPageInput').value = '1';
         loadEquipmentReturnTable();
     });
 
     document.getElementById('resetReturnFiltersBtn').addEventListener('click', function () {
         const form = document.getElementById('equipmentReturnFilterForm');
-        form.reset();
+        form.querySelector('[name="searchString"]').value = '';
         document.getElementById('returnSortOrderInput').value = '';
+        document.getElementById('returnPageInput').value = '1';
         loadEquipmentReturnTable();
     });
 
@@ -139,7 +155,7 @@
         }
     );
 
-    wireReturnSortLinks();
+    wireReturnTableUi();
     window.setupExportLinksFromForms();
     window.addEventListener('popstate', function () {
         const form = document.getElementById('equipmentReturnFilterForm');

@@ -2494,6 +2494,56 @@ html[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
     }
 }
 
+/* Razduženja nemaju checkbox stupac: prvi stupac mora ostati inventurni broj. */
+.returns-table {
+    min-width: 1420px !important;
+    table-layout: auto !important;
+}
+
+.returns-table th,
+.returns-table td {
+    white-space: nowrap !important;
+}
+
+.returns-table th.return-inventory,
+.returns-table td.return-inventory {
+    width: 130px !important;
+    min-width: 130px !important;
+    max-width: none !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    text-align: left !important;
+    overflow: visible !important;
+}
+
+.returns-table th.return-serial,
+.returns-table td.return-serial {
+    width: 165px !important;
+    min-width: 165px !important;
+    max-width: none !important;
+    overflow: visible !important;
+}
+
+.returns-table .return-type { min-width: 90px !important; }
+.returns-table .return-name { min-width: 205px !important; }
+.returns-table .return-site { min-width: 180px !important; }
+.returns-table .return-employee { min-width: 180px !important; }
+.returns-table .return-date { min-width: 145px !important; }
+.returns-table .return-user { min-width: 90px !important; }
+.returns-table .return-actions { min-width: 180px !important; }
+
+.returns-table td.return-actions .d-flex {
+    flex-wrap: nowrap !important;
+}
+
+.returns-table td.return-name,
+.returns-table td.return-site,
+.returns-table td.return-employee {
+    max-width: 260px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         scroll-behavior: auto !important;

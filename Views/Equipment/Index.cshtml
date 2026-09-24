@@ -91,7 +91,7 @@
         <div class="card-body">
             <div class="filter-title">Filteri i pretraga</div>
 
-            <form id="equipmentFilterForm" class="row g-3">
+            <form id="equipmentFilterForm" method="get" asp-action="Index" class="row g-3">
                 <div class="col-lg-6 autocomplete-search-wrap">
                     <input type="text"
                            id="equipmentMainSearch"
@@ -389,7 +389,8 @@ function setupBulkReturn() {
 
     document.getElementById('resetFiltersBtn').addEventListener('click', function () {
         const form = document.getElementById('equipmentFilterForm');
-        form.reset();
+        form.querySelector('[name="searchString"]').value = '';
+        form.querySelector('[name="statusFilter"]').value = '';
         document.getElementById('sortOrderInput').value = '';
         document.getElementById('equipmentPageInput').value = '1';
         loadEquipmentTable();

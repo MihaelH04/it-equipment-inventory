@@ -2,6 +2,7 @@ using ITEquipmentInventory.Data;
 using ITEquipmentInventory.Models;
 using ITEquipmentInventory.Models.ViewModels;
 using ITEquipmentInventory.Services;
+using ITEquipmentInventory.Services.Search;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,11 +16,19 @@ public class SitesController : Controller
 {
     private readonly AppDbContext _context;
     private readonly RecycleBinService _recycleBin;
+    private readonly ISearchQueryService _searchQueries;
+    private readonly ISearchQueryBuilder _searchBuilder;
 
-    public SitesController(AppDbContext context, RecycleBinService recycleBin)
+    public SitesController(
+        AppDbContext context,
+        RecycleBinService recycleBin,
+        ISearchQueryService searchQueries,
+        ISearchQueryBuilder searchBuilder)
     {
         _context = context;
         _recycleBin = recycleBin;
+        _searchQueries = searchQueries;
+        _searchBuilder = searchBuilder;
     }
 
     [HttpGet]
@@ -420,20 +429,26 @@ public class SitesController : Controller
     {
         var query = _context.Sites.AsNoTracking().AsQueryable();
 
-        // Status filter
-        if (!string.IsNullOrWhiteSpace(statusFilter))
+        if (!string.IsNullOrWhiteSpace(statusFilter) &&
+            Enum.TryParse<SiteStatus>(statusFilter, true, out var parsedStatus) &&
+            Enum.IsDefined(typeof(SiteStatus), parsedStatus))
         {
-            if (statusFilter == "Aktivno")
-                query = query.Where(s => s.Status == SiteStatus.Aktivno);
-            else if (statusFilter == "Neaktivno")
-                query = query.Where(s => s.Status == SiteStatus.Neaktivno);
+            query = query.Where(s => s.Status == parsedStatus);
         }
 
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
-            foreach (var token in TokenizeSearch(searchString))
-                query = query.Where(s => s.Name.Contains(token) || (s.Code != null && s.Code.Contains(token)) || (s.Location != null && s.Location.Contains(token)));
-        }
+        var search = _searchQueries.Parse(searchString);
+        var hasInactiveStatusToken = search.Groups.Any(group => IsInactiveStatusToken(group.Token));
+        var hasActiveStatusToken = !hasInactiveStatusToken && search.Groups.Any(group => IsActiveStatusToken(group.Token));
+        if (hasInactiveStatusToken)
+            query = query.Where(s => s.Status == SiteStatus.Neaktivno);
+        else if (hasActiveStatusToken)
+            query = query.Where(s => s.Status == SiteStatus.Aktivno);
+
+        var textGroups = search.Groups
+            .Where(group => !IsInactiveStatusToken(group.Token) && !IsActiveStatusToken(group.Token))
+            .ToArray();
+        var textSearch = new SearchQuery(search.Original, search.Normalized, search.Compact, textGroups);
+        query = _searchBuilder.WhereMatches(query, textSearch, SearchProfiles.Sites());
 
         bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
 

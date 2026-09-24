@@ -63,21 +63,22 @@
     }
 
     <div class="consumables-stats-grid consumables-stats-grid--four mb-4">
-        <a asp-action="Index" class="consumables-stat-card consumables-stat-card--all @(string.IsNullOrEmpty(currentStatus) ? "is-selected" : "")">
+        <a asp-action="Index" asp-route-searchString="@currentSearch" asp-route-sortOrder="@currentSort"
+           class="consumables-stat-card consumables-stat-card--all @(string.IsNullOrEmpty(currentStatus) ? "is-selected" : "")">
             <span class="consumables-stat-icon" aria-hidden="true">▦</span>
             <span><strong id="totalProductsCount">@ViewBag.TotalCount</strong><small>Ukupno proizvoda</small></span>
         </a>
-        <a asp-action="Index" asp-route-statusFilter="Dostupno"
+        <a asp-action="Index" asp-route-statusFilter="Dostupno" asp-route-searchString="@currentSearch" asp-route-sortOrder="@currentSort"
            class="consumables-stat-card consumables-stat-card--available @(currentStatus == "Dostupno" ? "is-selected" : "")">
             <span class="consumables-stat-icon" aria-hidden="true">✓</span>
             <span><strong id="availableProductsCount">@ViewBag.AvailableCount</strong><small>Dostupno</small></span>
         </a>
-        <a asp-action="Index" asp-route-statusFilter="Naruceno"
+        <a asp-action="Index" asp-route-statusFilter="Naruceno" asp-route-searchString="@currentSearch" asp-route-sortOrder="@currentSort"
            class="consumables-stat-card consumables-stat-card--ordered @(currentStatus == "Naruceno" ? "is-selected" : "")">
             <span class="consumables-stat-icon" aria-hidden="true">↻</span>
             <span><strong id="orderedProductsCount">@ViewBag.OrderedCount</strong><small>Čeka zaprimanje</small></span>
         </a>
-        <a asp-action="Index" asp-route-statusFilter="Nema"
+        <a asp-action="Index" asp-route-statusFilter="Nema" asp-route-searchString="@currentSearch" asp-route-sortOrder="@currentSort"
            class="consumables-stat-card consumables-stat-card--missing @(currentStatus == "Nema" ? "is-selected" : "")">
             <span class="consumables-stat-icon" aria-hidden="true">!</span>
             <span><strong id="missingProductsCount">@ViewBag.MissingCount</strong><small>Nema na stanju</small></span>
@@ -94,7 +95,7 @@
         <div id="consumablesMainSearchSuggestions" class="list-group autocomplete-suggestions shadow-sm"></div>
         </div>
         <button type="submit" class="btn btn-primary">Pretraži</button>
-        <a asp-action="Index" asp-route-statusFilter="@currentStatus" class="btn btn-outline-secondary">Reset</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
         <span class="consumables-unit-summary ms-auto">Na stanju: <strong id="totalAvailableUnits">@ViewBag.TotalAvailableUnits</strong> &nbsp;•&nbsp; Naručeno: <strong id="totalOrderedUnits">@ViewBag.TotalOrderedUnits</strong></span>
     </form>
 

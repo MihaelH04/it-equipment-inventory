@@ -2,6 +2,7 @@ using ITEquipmentInventory.Data;
 using ITEquipmentInventory.Models;
 using ITEquipmentInventory.Models.ViewModels;
 using ITEquipmentInventory.Services;
+using ITEquipmentInventory.Services.Search;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -16,11 +17,19 @@ public class EmployeesController : Controller
 {
     private readonly AppDbContext _context;
     private readonly RecycleBinService _recycleBin;
+    private readonly ISearchQueryService _searchQueries;
+    private readonly ISearchQueryBuilder _searchBuilder;
 
-    public EmployeesController(AppDbContext context, RecycleBinService recycleBin)
+    public EmployeesController(
+        AppDbContext context,
+        RecycleBinService recycleBin,
+        ISearchQueryService searchQueries,
+        ISearchQueryBuilder searchBuilder)
     {
         _context = context;
         _recycleBin = recycleBin;
+        _searchQueries = searchQueries;
+        _searchBuilder = searchBuilder;
     }
 
     [HttpGet]
@@ -474,18 +483,12 @@ public class EmployeesController : Controller
 
         if (!string.IsNullOrWhiteSpace(siteFilter))
         {
-            var term = siteFilter.Trim();
-            query = query.Where(e => e.Site != null && (e.Site.Name.Contains(term) || (e.Site.Code != null && e.Site.Code.Contains(term))));
+            var siteSearch = _searchQueries.Parse(siteFilter);
+            query = _searchBuilder.WhereMatches(query, siteSearch, SearchProfiles.EmployeeSites());
         }
 
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
-            foreach (var token in TokenizeSearch(searchString))
-            {
-                query = query.Where(e => e.WorkerCode.Contains(token) || e.FullName.Contains(token) ||
-                    (e.Site != null && (e.Site.Name.Contains(token) || (e.Site.Code != null && e.Site.Code.Contains(token)))));
-            }
-        }
+        var search = _searchQueries.Parse(searchString);
+        query = _searchBuilder.WhereMatches(query, search, SearchProfiles.Employees());
 
         bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
 

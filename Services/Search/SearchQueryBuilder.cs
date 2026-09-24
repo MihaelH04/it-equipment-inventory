@@ -20,6 +20,28 @@ public sealed class SearchQueryBuilder : ISearchQueryBuilder
             return source;
 
         var parameter = Expression.Parameter(typeof(TEntity), "entity");
+
+        // Unos poput RAD-001, INV-10001 ili LPT-20260001 predstavlja jednu šifru.
+        // Dijelovi takve šifre ne smiju se pronaći u različitim poljima zapisa.
+        if (LooksLikeCode(query.Original) && query.Compact.Length > 0)
+        {
+            Expression? anyCodeField = null;
+            foreach (var field in fields)
+            {
+                var value = ReplaceParameter(field.Selector, parameter);
+                var compactField = CompactSql(NormalizeSql(value));
+                var match = Expression.Call(
+                    compactField,
+                    nameof(string.Contains),
+                    Type.EmptyTypes,
+                    Expression.Constant(query.Compact));
+                anyCodeField = anyCodeField == null ? match : Expression.OrElse(anyCodeField, match);
+            }
+
+            if (anyCodeField != null)
+                return source.Where(Expression.Lambda<Func<TEntity, bool>>(anyCodeField, parameter));
+        }
+
         Expression? allGroups = null;
 
         foreach (var group in query.Groups)
@@ -139,6 +161,9 @@ public sealed class SearchQueryBuilder : ISearchQueryBuilder
     }
 
     private static string CompactLiteral(string value) => string.Concat(value.Where(char.IsLetterOrDigit));
+
+    private static bool LooksLikeCode(string value) =>
+        !value.Any(char.IsWhiteSpace) && value.Any(char.IsLetter) && value.Any(char.IsDigit);
 
     private sealed class ParameterReplaceVisitor(ParameterExpression source, ParameterExpression target) : ExpressionVisitor
     {

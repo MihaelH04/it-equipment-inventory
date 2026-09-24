@@ -51,6 +51,8 @@
     <form id="sitesFiltersForm" method="get" asp-action="Index" class="row g-2 mb-3">
         <input type="hidden" name="sortBy" id="sortByInput" value="@ViewBag.SortBy" />
         <input type="hidden" name="sortDir" id="sortDirInput" value="@ViewBag.SortDir" />
+        <input type="hidden" name="page" id="sitesPageInput" value="@(ViewBag.CurrentPage ?? 1)" />
+        <input type="hidden" name="pageSize" id="sitesPageSizeInput" value="@(ViewBag.PageSize ?? 25)" />
 
         <div class="col-md-6 autocomplete-search-wrap">
             <input type="text"
@@ -96,17 +98,23 @@
         if (filtersForm) {
             filtersForm.addEventListener('submit', function (e) {
                 e.preventDefault();
+                document.getElementById('sitesPageInput').value = '1';
                 refreshSitesTableFromForm();
             });
 
             document.getElementById('statusFilterSelect')
-                .addEventListener('change', refreshSitesTableFromForm);
+                .addEventListener('change', function () {
+                    document.getElementById('sitesPageInput').value = '1';
+                    refreshSitesTableFromForm();
+                });
         }
 
         document.getElementById('resetSitesFiltersBtn').addEventListener('click', function () {
-            filtersForm.reset();
+            filtersForm.querySelector('[name="searchString"]').value = '';
+            filtersForm.querySelector('[name="statusFilter"]').value = '';
             document.getElementById('sortByInput').value = 'naziv';
             document.getElementById('sortDirInput').value = 'asc';
+            document.getElementById('sitesPageInput').value = '1';
             refreshSitesTableFromForm();
         });
 
@@ -156,7 +164,19 @@
                 const url = new URL(this.href, window.location.origin);
                 document.getElementById('sortByInput').value = url.searchParams.get('sortBy') ?? 'naziv';
                 document.getElementById('sortDirInput').value = url.searchParams.get('sortDir') ?? 'asc';
+                document.getElementById('sitesPageInput').value = '1';
 
+                refreshSitesTableFromForm();
+            });
+        });
+
+        document.querySelectorAll('#sitesTableContainer .ajax-page-link').forEach(link => {
+            link.addEventListener('click', function (e) {
+                if (this.closest('.page-item')?.classList.contains('disabled')) return;
+                e.preventDefault();
+                const url = new URL(this.href, window.location.origin);
+                document.getElementById('sitesPageInput').value = url.searchParams.get('page') ?? '1';
+                document.getElementById('sitesPageSizeInput').value = url.searchParams.get('pageSize') ?? '25';
                 refreshSitesTableFromForm();
             });
         });

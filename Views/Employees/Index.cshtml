@@ -51,6 +51,8 @@
     <form id="employeesFiltersForm" method="get" asp-action="Index" class="row g-2 mb-3">
         <input type="hidden" name="sortBy" id="employeesSortByInput" value="@ViewBag.SortBy" />
         <input type="hidden" name="sortDir" id="employeesSortDirInput" value="@ViewBag.SortDir" />
+        <input type="hidden" name="page" id="employeesPageInput" value="@(ViewBag.CurrentPage ?? 1)" />
+        <input type="hidden" name="pageSize" id="employeesPageSizeInput" value="@(ViewBag.PageSize ?? 25)" />
 
         <div class="col-md-6 autocomplete-search-wrap">
             <input type="text"
@@ -95,18 +97,24 @@
         if (filtersForm) {
             filtersForm.addEventListener('submit', function (e) {
                 e.preventDefault();
+                document.getElementById('employeesPageInput').value = '1';
                 refreshEmployeesTableFromForm();
             });
 
             filtersForm.querySelectorAll('select').forEach(el => {
-                el.addEventListener('change', refreshEmployeesTableFromForm);
+                el.addEventListener('change', function () {
+                    document.getElementById('employeesPageInput').value = '1';
+                    refreshEmployeesTableFromForm();
+                });
             });
         }
 
         document.getElementById('resetEmployeesFiltersBtn').addEventListener('click', function () {
-            filtersForm.reset();
+            filtersForm.querySelector('[name="searchString"]').value = '';
+            filtersForm.querySelector('[name="statusFilter"]').value = '';
             document.getElementById('employeesSortByInput').value = 'sifra';
             document.getElementById('employeesSortDirInput').value = 'asc';
+            document.getElementById('employeesPageInput').value = '1';
             refreshEmployeesTableFromForm();
         });
 
@@ -155,6 +163,18 @@
                 const url = new URL(this.href, window.location.origin);
                 document.getElementById('employeesSortByInput').value = url.searchParams.get('sortBy') ?? 'sifra';
                 document.getElementById('employeesSortDirInput').value = url.searchParams.get('sortDir') ?? 'asc';
+                document.getElementById('employeesPageInput').value = '1';
+                refreshEmployeesTableFromForm();
+            });
+        });
+
+        document.querySelectorAll('#employeesTableContainer .ajax-page-link').forEach(link => {
+            link.addEventListener('click', function (e) {
+                if (this.closest('.page-item')?.classList.contains('disabled')) return;
+                e.preventDefault();
+                const url = new URL(this.href, window.location.origin);
+                document.getElementById('employeesPageInput').value = url.searchParams.get('page') ?? '1';
+                document.getElementById('employeesPageSizeInput').value = url.searchParams.get('pageSize') ?? '25';
                 refreshEmployeesTableFromForm();
             });
         });

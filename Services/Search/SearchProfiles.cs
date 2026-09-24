@@ -31,8 +31,7 @@ public static class SearchProfiles
     [
         new(s => s.Code, 100, true),
         new(s => s.Name, 80),
-        new(s => s.Location, 40),
-        new(s => s.Status == SiteStatus.Aktivno ? "aktivno aktivan active" : "neaktivno neaktivan inactive", 20)
+        new(s => s.Location, 40)
     ];
 
     public static SearchField<Employee>[] Employees() =>
@@ -41,8 +40,7 @@ public static class SearchProfiles
         new(e => e.FullName, 80),
         new(e => e.Site != null ? e.Site.Code : null, 75, true),
         new(e => e.Site != null ? e.Site.Name : null, 50),
-        new(e => e.Site != null ? e.Site.Location : null, 30),
-        new(e => e.Status == EmployeeStatus.Aktivan ? "aktivan aktivno active" : "neaktivan neaktivno inactive", 20)
+        new(e => e.Site != null ? e.Site.Location : null, 30)
     ];
 
     public static SearchField<Employee>[] EmployeeSites() =>
@@ -104,5 +102,12 @@ public static class SearchProfiles
     public static SearchField<ConsumableCompatiblePrinter>[] CompatiblePrinters() =>
     [
         new(x => x.PrinterName, 70)
+    ];
+
+    public static SearchField<DeletedItem>[] DeletedItems() =>
+    [
+        new(x => x.EntityLabel, 80),
+        new(x => x.DisplayName, 100),
+        new(x => x.DeletedBy, 40)
     ];
 }

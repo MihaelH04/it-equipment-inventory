@@ -2,6 +2,7 @@ using ITEquipmentInventory.Data;
 using ITEquipmentInventory.Models;
 using ITEquipmentInventory.Models.ViewModels;
 using ITEquipmentInventory.Services;
+using ITEquipmentInventory.Services.Search;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -16,11 +17,19 @@ public class EquipmentController : Controller
 {
     private readonly AppDbContext _context;
     private readonly RecycleBinService _recycleBin;
+    private readonly ISearchQueryService _searchQueries;
+    private readonly ISearchQueryBuilder _searchBuilder;
 
-    public EquipmentController(AppDbContext context, RecycleBinService recycleBin)
+    public EquipmentController(
+        AppDbContext context,
+        RecycleBinService recycleBin,
+        ISearchQueryService searchQueries,
+        ISearchQueryBuilder searchBuilder)
     {
         _context = context;
         _recycleBin = recycleBin;
+        _searchQueries = searchQueries;
+        _searchBuilder = searchBuilder;
     }
 
     [HttpGet]
@@ -867,16 +876,8 @@ private async Task LoadBulkReturnDecisionLookupDataAsync(EquipmentBulkReturnDeci
             query = query.Where(e => e.Status == parsedStatus);
         }
 
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
-            foreach (var token in TokenizeSearch(searchString))
-            {
-                query = query.Where(e => (e.InventoryNumber ?? string.Empty).Contains(token) ||
-                    (e.SerialNumber != null && e.SerialNumber.Contains(token)) || (e.Name ?? string.Empty).Contains(token) ||
-                    (e.CurrentSite != null && (e.CurrentSite.Name.Contains(token) || (e.CurrentSite.Code != null && e.CurrentSite.Code.Contains(token)))) ||
-                    (e.CurrentEmployee != null && (e.CurrentEmployee.FullName.Contains(token) || e.CurrentEmployee.WorkerCode.Contains(token))));
-            }
-        }
+        var search = _searchQueries.Parse(searchString);
+        query = _searchBuilder.WhereMatches(query, search, SearchProfiles.Equipment());
 
         query = sortOrder switch
         {

@@ -1,6 +1,7 @@
 using ITEquipmentInventory.Data;
 using ITEquipmentInventory.Services;
 using ITEquipmentInventory.Models.ViewModels;
+using ITEquipmentInventory.Services.Search;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,11 +13,19 @@ public class RecycleBinController : Controller
 {
     private readonly AppDbContext _context;
     private readonly RecycleBinService _recycleBin;
+    private readonly ISearchQueryService _searchQueries;
+    private readonly ISearchQueryBuilder _searchBuilder;
 
-    public RecycleBinController(AppDbContext context, RecycleBinService recycleBin)
+    public RecycleBinController(
+        AppDbContext context,
+        RecycleBinService recycleBin,
+        ISearchQueryService searchQueries,
+        ISearchQueryBuilder searchBuilder)
     {
         _context = context;
         _recycleBin = recycleBin;
+        _searchQueries = searchQueries;
+        _searchBuilder = searchBuilder;
     }
 
     [HttpGet]
@@ -28,14 +37,8 @@ public class RecycleBinController : Controller
         var query = _context.DeletedItems.AsNoTracking()
             .Where(x => x.ExpiresAtUtc >= DateTime.UtcNow);
 
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
-            var term = searchString.Trim();
-            query = query.Where(x =>
-                x.EntityLabel.Contains(term) ||
-                x.DisplayName.Contains(term) ||
-                (x.DeletedBy != null && x.DeletedBy.Contains(term)));
-        }
+        var search = _searchQueries.Parse(searchString);
+        query = _searchBuilder.WhereMatches(query, search, SearchProfiles.DeletedItems());
 
         var totalCount = await query.CountAsync();
         var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));

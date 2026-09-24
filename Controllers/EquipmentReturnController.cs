@@ -2,6 +2,7 @@ using ITEquipmentInventory.Data;
 using ITEquipmentInventory.Models;
 using ITEquipmentInventory.Models.ViewModels;
 using ITEquipmentInventory.Services;
+using ITEquipmentInventory.Services.Search;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,11 +16,19 @@ public class EquipmentReturnController : Controller
 {
     private readonly AppDbContext _context;
     private readonly RecycleBinService _recycleBin;
+    private readonly ISearchQueryService _searchQueries;
+    private readonly ISearchQueryBuilder _searchBuilder;
 
-    public EquipmentReturnController(AppDbContext context, RecycleBinService recycleBin)
+    public EquipmentReturnController(
+        AppDbContext context,
+        RecycleBinService recycleBin,
+        ISearchQueryService searchQueries,
+        ISearchQueryBuilder searchBuilder)
     {
         _context = context;
         _recycleBin = recycleBin;
+        _searchQueries = searchQueries;
+        _searchBuilder = searchBuilder;
     }
 
     [HttpGet]
@@ -292,18 +301,8 @@ public class EquipmentReturnController : Controller
     {
         var query = _context.EquipmentReturns.AsNoTracking().AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
-            foreach (var token in TokenizeSearch(searchString))
-            {
-                query = query.Where(x => (x.InventoryNumber ?? string.Empty).Contains(token) || (x.SerialNumber != null && x.SerialNumber.Contains(token)) ||
-                    (x.Name ?? string.Empty).Contains(token) || (x.PreviousSiteCode != null && x.PreviousSiteCode.Contains(token)) ||
-                    (x.PreviousSiteName != null && x.PreviousSiteName.Contains(token)) ||
-                    (x.PreviousEmployeeCode != null && x.PreviousEmployeeCode.Contains(token)) ||
-                    (x.PreviousEmployeeName != null && x.PreviousEmployeeName.Contains(token)) ||
-                    (x.HandedOverBy != null && x.HandedOverBy.Contains(token)) || (x.Note != null && x.Note.Contains(token)));
-            }
-        }
+        var search = _searchQueries.Parse(searchString);
+        query = _searchBuilder.WhereMatches(query, search, SearchProfiles.Returns());
 
         query = sortOrder switch
         {

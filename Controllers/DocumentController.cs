@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using DocumentFormat.OpenXml.Packaging;
@@ -19,11 +20,16 @@ public class DocumentController : Controller
     {
         private readonly AppDbContext _context;
         private readonly StoragePaths _storagePaths;
+        private readonly ILogger<DocumentController> _logger;
 
-        public DocumentController(AppDbContext context, StoragePaths storagePaths)
+        public DocumentController(
+            AppDbContext context,
+            StoragePaths storagePaths,
+            ILogger<DocumentController> logger)
         {
             _context = context;
             _storagePaths = storagePaths;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -48,9 +54,14 @@ public class DocumentController : Controller
                     handedOverByOptions
                 ),
                 AssignedAt = equipment.AssignedAt ?? DateTime.Now,
-                RecipientFullName = equipment.CurrentEmployee?.FullName ?? string.Empty,
+                RecipientFullName = JoinCodeAndName(
+                    equipment.CurrentEmployee?.WorkerCode,
+                    equipment.CurrentEmployee?.FullName),
                 JobTitle = string.Empty,
-                CostCenterName = equipment.CurrentSite?.Name ?? string.Empty,
+                CostCenterName = JoinCodeAndName(
+                    equipment.CurrentSite?.Code,
+                    equipment.CurrentSite?.Name),
+                AssetNumber = equipment.InventoryNumber ?? string.Empty,
                 SerialNumber = equipment.SerialNumber ?? string.Empty
             };
 
@@ -59,7 +70,9 @@ public class DocumentController : Controller
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> GeneratePdf(DocumentGenerateViewModel model)
+        public async Task<IActionResult> GeneratePdf(
+            DocumentGenerateViewModel model,
+            CancellationToken cancellationToken)
         {
             var equipment = await _context.Equipment
                 .Include(e => e.CurrentEmployee)
@@ -98,6 +111,7 @@ public class DocumentController : Controller
             var downloadBaseFileName = BuildAssignmentDocumentFileName(equipment);
             var tempBaseFileName = $"{downloadBaseFileName}_{Guid.NewGuid():N}";
             var tempDocxPath = Path.Combine(generatedFolder, tempBaseFileName + ".docx");
+            string? finalPdfPath = null;
 
             try
             {
@@ -152,7 +166,10 @@ public class DocumentController : Controller
                     return View("Generate", model);
                 }
 
-                var finalPdfPath = ConvertDocxToPdfWithLibreOffice(tempDocxPath, generatedFolder);
+                finalPdfPath = await ConvertDocxToPdfWithLibreOfficeAsync(
+                    tempDocxPath,
+                    generatedFolder,
+                    cancellationToken);
 
                 if (!System.IO.File.Exists(finalPdfPath))
                 {
@@ -161,18 +178,34 @@ public class DocumentController : Controller
                 }
 
                 var bytes = await System.IO.File.ReadAllBytesAsync(finalPdfPath);
-                var downloadName = downloadBaseFileName + ".pdf";
+                if (bytes.Length < 5 ||
+                    !bytes.AsSpan(0, 5).SequenceEqual("%PDF-"u8))
+                {
+                    throw new InvalidDataException("Generirana datoteka nije valjani PDF dokument.");
+                }
 
-                TryDeleteFile(tempDocxPath);
-                TryDeleteFile(finalPdfPath);
+                var downloadName = downloadBaseFileName + ".pdf";
 
                 return File(bytes, "application/pdf", downloadName);
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError(string.Empty, $"Greška kod generiranja PDF-a: {ex.Message}");
-                TryDeleteFile(tempDocxPath);
+                _logger.LogError(
+                    ex,
+                    "Generiranje PDF zaduženja nije uspjelo za opremu {EquipmentId}.",
+                    model.EquipmentId);
+
+                ModelState.AddModelError(
+                    string.Empty,
+                    "PDF trenutačno nije moguće generirati. Pokušajte ponovno ili se obratite administratoru.");
+
+                await LoadHandedOverByOptionsAsync();
                 return View("Generate", model);
+            }
+            finally
+            {
+                TryDeleteFile(tempDocxPath);
+                TryDeleteFile(finalPdfPath);
             }
         }
 
@@ -260,7 +293,10 @@ public class DocumentController : Controller
             }
         }
 
-        private string ConvertDocxToPdfWithLibreOffice(string docxPath, string outDir)
+        private async Task<string> ConvertDocxToPdfWithLibreOfficeAsync(
+            string docxPath,
+            string outDir,
+            CancellationToken cancellationToken)
         {
             if (!System.IO.File.Exists(docxPath))
                 throw new Exception($"DOCX za konverziju ne postoji: {docxPath}");
@@ -271,8 +307,8 @@ public class DocumentController : Controller
 
             if (string.IsNullOrWhiteSpace(soffice))
             {
-                throw new Exception(
-                    "LibreOffice nije pronađen. Na Linuxu instaliraj: sudo apt install libreoffice libreoffice-writer");
+                throw new FileNotFoundException(
+                    "LibreOffice nije pronađen. Provjerite Storage:LibreOfficeExecutable i instalaciju LibreOffice Writera.");
             }
 
             var fullDocxPath = Path.GetFullPath(docxPath);
@@ -295,62 +331,123 @@ public class DocumentController : Controller
             };
 
             Directory.CreateDirectory(_storagePaths.LibreOfficeProfilePath);
+            var conversionProfilePath = Path.Combine(
+                _storagePaths.LibreOfficeProfilePath,
+                Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(conversionProfilePath);
             var profileUri = new Uri(
-                Path.EndsInDirectorySeparator(_storagePaths.LibreOfficeProfilePath)
-                    ? _storagePaths.LibreOfficeProfilePath
-                    : _storagePaths.LibreOfficeProfilePath + Path.DirectorySeparatorChar).AbsoluteUri;
+                Path.EndsInDirectorySeparator(conversionProfilePath)
+                    ? conversionProfilePath
+                    : conversionProfilePath + Path.DirectorySeparatorChar).AbsoluteUri;
             psi.ArgumentList.Add($"-env:UserInstallation={profileUri}");
 
             psi.ArgumentList.Add("--headless");
             psi.ArgumentList.Add("--nologo");
             psi.ArgumentList.Add("--nofirststartwizard");
             psi.ArgumentList.Add("--convert-to");
-            psi.ArgumentList.Add("pdf");
+            psi.ArgumentList.Add("pdf:writer_pdf_Export");
             psi.ArgumentList.Add("--outdir");
             psi.ArgumentList.Add(fullOutDir);
             psi.ArgumentList.Add(fullDocxPath);
 
-            using var process = Process.Start(psi);
+            Process? process;
+            try
+            {
+                process = Process.Start(psi);
+            }
+            catch (Win32Exception ex)
+            {
+                TryDeleteDirectory(conversionProfilePath);
+                throw new InvalidOperationException(
+                    $"LibreOffice se ne može pokrenuti putem '{soffice}'.",
+                    ex);
+            }
 
             if (process == null)
-                throw new Exception("LibreOffice proces nije mogao biti pokrenut.");
-
-            var stdout = process.StandardOutput.ReadToEnd();
-            var stderr = process.StandardError.ReadToEnd();
-            var exited = process.WaitForExit(60000);
-
-            if (!exited)
             {
-                try
+                TryDeleteDirectory(conversionProfilePath);
+                throw new InvalidOperationException("LibreOffice proces nije mogao biti pokrenut.");
+            }
+
+            try
+            {
+                using (process)
                 {
-                    process.Kill(true);
+                    var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+                    var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
+                    try
+                    {
+                        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        timeout.CancelAfter(TimeSpan.FromSeconds(60));
+                        await process.WaitForExitAsync(timeout.Token);
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        TryKillProcess(process);
+                        throw new TimeoutException("LibreOffice konverzija je istekla nakon 60 sekundi.");
+                    }
+
+                    var stdout = await stdoutTask;
+                    var stderr = await stderrTask;
+
+                    if (process.ExitCode != 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"LibreOffice konverzija nije uspjela (ExitCode {process.ExitCode}). " +
+                            $"STDERR: {stderr} STDOUT: {stdout}");
+                    }
+
+                    for (var i = 0; i < 20; i++)
+                    {
+                        if (System.IO.File.Exists(expectedPdfPath))
+                            return expectedPdfPath;
+
+                        await Task.Delay(300, cancellationToken);
+                    }
+
+                    throw new InvalidOperationException(
+                        $"LibreOffice nije stvorio očekivani PDF. STDOUT: {stdout} STDERR: {stderr}");
                 }
-                catch
-                {
-                }
-
-                throw new Exception("LibreOffice konverzija je istekla nakon 60 sekundi.");
             }
-
-            if (process.ExitCode != 0)
+            finally
             {
-                throw new Exception(
-                    $"LibreOffice greška. ExitCode: {process.ExitCode}. STDERR: {stderr}. STDOUT: {stdout}");
+                TryDeleteDirectory(conversionProfilePath);
             }
-
-            for (var i = 0; i < 20; i++)
-            {
-                if (System.IO.File.Exists(expectedPdfPath))
-                    return expectedPdfPath;
-
-                Thread.Sleep(300);
-            }
-
-            throw new Exception(
-                $"PDF nije stvoren. Očekivana putanja: {expectedPdfPath}. STDOUT: {stdout} STDERR: {stderr}");
         }
 
-        private string ResolveLibreOfficePath() => _storagePaths.LibreOfficeExecutable;
+        private string? ResolveLibreOfficePath()
+        {
+            var configured = _storagePaths.LibreOfficeExecutable.Trim();
+            if (Path.IsPathFullyQualified(configured))
+                return System.IO.File.Exists(configured) ? configured : null;
+
+            if (configured.Contains(Path.DirectorySeparatorChar) ||
+                configured.Contains(Path.AltDirectorySeparatorChar))
+            {
+                var resolved = _storagePaths.ResolveFromContentRoot(configured);
+                return System.IO.File.Exists(resolved) ? resolved : null;
+            }
+
+            var candidates = OperatingSystem.IsWindows()
+                ? new[]
+                {
+                    Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                        "LibreOffice", "program", "soffice.exe"),
+                    Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                        "LibreOffice", "program", "soffice.exe")
+                }
+                : new[]
+                {
+                    "/usr/bin/soffice",
+                    "/usr/local/bin/soffice",
+                    "/snap/bin/libreoffice"
+                };
+
+            return candidates.FirstOrDefault(System.IO.File.Exists) ?? configured;
+        }
 
         private string GetGeneratedDocumentsFolder()
         {
@@ -381,6 +478,14 @@ public class DocumentController : Controller
             var workerCode = SafeFileNamePart(equipment.CurrentEmployee?.WorkerCode, "bez_sifre_radnika");
 
             return $"zaduzenje_{inventoryNumber}_{employeeName}_{workerCode}";
+        }
+
+        private static string JoinCodeAndName(string? code, string? name)
+        {
+            var parts = new[] { code?.Trim(), name?.Trim() }
+                .Where(x => !string.IsNullOrWhiteSpace(x));
+
+            return string.Join(" - ", parts);
         }
 
         private string SafeFileNamePart(string? value, string fallback)
@@ -427,15 +532,43 @@ public class DocumentController : Controller
             return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
         }
 
-        private void TryDeleteFile(string path)
+        private void TryDeleteFile(string? path)
         {
             try
             {
                 if (!string.IsNullOrWhiteSpace(path) && System.IO.File.Exists(path))
                     System.IO.File.Delete(path);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Nije moguće obrisati privremenu datoteku {Path}.", path);
+            }
+        }
+
+        private void TryDeleteDirectory(string path)
+        {
+            try
+            {
+                if (Directory.Exists(path))
+                    Directory.Delete(path, true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Nije moguće obrisati privremeni LibreOffice profil {Path}.", path);
+            }
+        }
+
+        private void TryKillProcess(Process process)
+        {
+            try
+            {
+                process.Kill(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(
+                    ex,
+                    "LibreOffice proces je možda već završio prije pokušaja prekida.");
             }
         }
     }
